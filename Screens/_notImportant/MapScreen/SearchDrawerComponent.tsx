@@ -5,9 +5,11 @@ import {
   TouchableOpacity,
   Animated,
   ScrollView,
+    StyleSheet,
 } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import PropTypes from "prop-types";
+
 
 const SearchDrawer = ({
   searchRef,
@@ -19,23 +21,23 @@ const SearchDrawer = ({
   animateSearchDrawer,
   searchBarAnim,
   GOOGLE_MAPS_API_KEY,
-  tabs, // [{ key: 'Recent', label: 'Recent', data: [...locations] }, ...]
+  tabs,
 }) => {
   const [activeTab, setActiveTab] = useState(tabs?.[0]?.key || "");
 
+  const activeTabData = tabs.find((tab) => tab.key === activeTab)?.data || [];
+
+  const handlePlaceSelect = (place) => {
+    onPlaceSelect(place);
+    animateSearchDrawer(false);
+  };
+
   return (
-    <Animated.View
-      style={{
-        height: "95%",
-        zIndex: 1001,
-        transform: [{ translateY: searchBarAnim }],
-        backgroundColor: "white",
-      }}
-    >
+    <Animated.View style={[styles.searchDrawer, { transform: [{ translateY: searchBarAnim }] }]}>
       <GooglePlacesAutocomplete
         ref={searchRef}
         placeholder="Where to?"
-        fetchDetails={true}
+        fetchDetails
         onPress={(data, details = null) => {
           if (details) {
             const selectedPlace = {
@@ -43,9 +45,8 @@ const SearchDrawer = ({
               longitude: details.geometry.location.lng,
               address: data.description,
             };
-            onPlaceSelect(selectedPlace);
+            handlePlaceSelect(selectedPlace);
             setIsTyping(false);
-            animateSearchDrawer(false);
             searchRef.current?.setAddressText("");
           }
         }}
@@ -60,13 +61,7 @@ const SearchDrawer = ({
         }}
         query={{ key: GOOGLE_MAPS_API_KEY, language: "en" }}
         styles={{
-          textInput: {
-            backgroundColor: "#fff",
-            borderRadius: 10,
-            paddingRight: 50,
-            paddingVertical: 10,
-            fontSize: 16,
-          },
+          textInput: styles.searchInput,
           container: { flex: 1, marginBottom: 10 },
           listView: {
             position: "absolute",
@@ -81,7 +76,7 @@ const SearchDrawer = ({
 
       {searchText.length > 0 && (
         <TouchableOpacity
-          style={{ position: "absolute", top: 14, right: 16 }}
+          style={styles.clearButton}
           onPress={() => {
             setSearchText("");
             searchRef.current?.setAddressText("");
@@ -90,21 +85,20 @@ const SearchDrawer = ({
           accessible
           accessibilityLabel="Clear search input"
         >
-          <Text style={{ fontSize: 18, color: "#888" }}>✖</Text>
+          <Text style={styles.clearButtonText}>✖</Text>
         </TouchableOpacity>
       )}
 
       {!isTyping && tabs?.length > 0 && (
         <>
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginTop: 10 }}>
+          <View style={styles.tabContainer}>
             {tabs.map((tab) => (
               <TouchableOpacity key={tab.key} onPress={() => setActiveTab(tab.key)}>
                 <Text
-                  style={{
-                    fontSize: 16,
-                    fontWeight: activeTab === tab.key ? "bold" : "normal",
-                    color: activeTab === tab.key ? "blue" : "black",
-                  }}
+                  style={[
+                    styles.tabText,
+                    activeTab === tab.key && styles.activeTabText,
+                  ]}
                 >
                   {tab.label}
                 </Text>
@@ -112,34 +106,29 @@ const SearchDrawer = ({
             ))}
           </View>
 
-          <ScrollView style={{ padding: 10 }}>
-            {tabs
-              .find((tab) => tab.key === activeTab)
-              ?.data?.map(
-                (place, index) =>
-                  place?.address && (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => {
-                        onPlaceSelect(place);
-                        animateSearchDrawer(false);
-                      }}
-                    >
-                      <Text style={{ padding: 8 }}>{place.address}</Text>
-                    </TouchableOpacity>
-                  )
-              )}
+          <ScrollView style={styles.scrollView}>
+            {activeTabData.map(
+              (place, index) =>
+                place?.address && (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => handlePlaceSelect(place)}
+                  >
+                    <Text style={styles.placeOption}>{place.address}</Text>
+                  </TouchableOpacity>
+                )
+            )}
           </ScrollView>
         </>
       )}
 
       <TouchableOpacity
-        style={{ padding: 16, alignItems: "center" }}
+        style={styles.closeButton}
         onPress={() => animateSearchDrawer(false)}
         accessible
         accessibilityLabel="Close search drawer"
       >
-        <Text style={{ fontSize: 16, color: "red" }}>✖ Close</Text>
+        <Text style={styles.closeButtonText}>✖ Close</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -171,6 +160,7 @@ SearchDrawer.propTypes = {
 };
 
 export default SearchDrawer;
+
 
 import { StyleSheet } from "react-native";
 

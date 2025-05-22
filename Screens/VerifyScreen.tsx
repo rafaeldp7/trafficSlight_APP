@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, StyleSheet, Button } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet, Button, Alert } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LOCALHOST_IP } from "@env";
 
@@ -11,37 +11,77 @@ export default function VerifyScreen() {
   const [message, setMessage] = useState("Verifying your email...");
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const verifyEmail = async () => {
     if (!token) {
-      setMessage("❌ Invalid or missing token.");
+      setMessage("❌ Invalid or missing verification token.");
       setLoading(false);
+      setRetry(false);
       return;
     }
 
     setLoading(true);
-    console.log("🔑 Received token:", token);
-
-    try {
-      const response = await fetch(`${LOCALHOST_IP}/api/auth/verify/${token}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage("✅ Email verified successfully! You may now login.");
-        setTimeout(() => {
-          navigation.navigate("Login");
-        }, 3000);
-      } else {
-        setMessage(`❌ Verification failed: ${data.msg}`);
-        setRetry(true);
-      }
-    } catch (error) {
-      console.error("Verification error:", error);
-      setMessage("❌ Something went wrong. Try again later.");
-      setRetry(true);
+    setRetry(false);
+    
+    // Only log in development - remove in production
+    if (__DEV__) {
+      console.log("🔑 Received token:", token.substring(0, 10) + "...");
     }
 
-    setLoading(false);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const response = await fetch(
+        `${LOCALHOST_IP}/api/auth/verify/${token}`,
+        {
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ msg: 'Unknown error occurred' }));
+        throw new Error(data.msg || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      setMessage("✅ Email verified successfully! Redirecting to login...");
+      setIsSuccess(true);
+      
+      setTimeout(() => {
+        navigation.navigate("Login");
+      }, 2500);
+
+    } catch (error) {
+      console.error("Verification error:", error);
+      
+      if (error.name === 'AbortError') {
+        setMessage("❌ Request timed out. Please check your connection and try again.");
+      } else if (error.message) {
+        setMessage(`❌ Verification failed: ${error.message}`);
+      } else {
+        setMessage("❌ Something went wrong. Please try again later.");
+      }
+      
+      setRetry(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    verifyEmail();
+  };
+
+  const handleGoToLogin = () => {
+    navigation.navigate("Login");
   };
 
   useEffect(() => {
@@ -50,14 +90,41 @@ export default function VerifyScreen() {
 
   return (
     <View style={styles.container}>
-      {loading && <ActivityIndicator size="large" color="#007AFF" />}
-      <Text style={styles.text}>
+      {loading && (
+        <ActivityIndicator 
+          size="large" 
+          color="#007AFF" 
+          accessibilityLabel="Verifying email"
+        />
+      )}
+      
+      <Text 
+        style={[styles.text, isSuccess && styles.successText]}
+        accessibilityRole="text"
+        accessibilityLiveRegion="polite"
+      >
         {message}
-        </Text>
+      </Text>
 
       {!loading && retry && (
-        <View style={{ marginTop: 20 }}>
-          <Button title="Retry" onPress={verifyEmail} color="#007AFF" />
+        <View style={styles.buttonContainer}>
+          <Button 
+            title="Retry Verification" 
+            onPress={handleRetry} 
+            color="#007AFF"
+            accessibilityLabel="Retry email verification"
+          />
+        </View>
+      )}
+
+      {!loading && !retry && !isSuccess && (
+        <View style={styles.buttonContainer}>
+          <Button 
+            title="Go to Login" 
+            onPress={handleGoToLogin} 
+            color="#666"
+            accessibilityLabel="Navigate to login screen"
+          />
         </View>
       )}
     </View>
@@ -77,5 +144,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
     marginTop: 20,
+    lineHeight: 24,
+  },
+  successText: {
+    color: "#4CAF50",
+  },
+  buttonContainer: {
+    marginTop: 30,
+    minWidth: 200,
   },
 });

@@ -21,9 +21,8 @@ import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 import polyline from "@mapbox/polyline";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
-import { useUser } from "../../AuthContext/UserContext";
-
-import SearchBar from "../_notImportant/SearchBar";
+import { useUser } from "../../../AuthContext/UserContext";
+import SearchBar from "../SearchBar";
 import "react-native-get-random-values";
 // ----------------------------------------------------------------
 // Types

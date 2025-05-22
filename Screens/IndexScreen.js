@@ -8,7 +8,7 @@ const IndexScreen = ({ navigation }) => {
       <Image source={require('../assets/logo.png')} style={styles.logo} />
       
       {/* Title */}
-      <Text style={styles.title}>Welcome to My App</Text>
+      <Text style={styles.title}>Welcome to Traffic Slight</Text>
 
       {/* Login Button */}
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Login')}>

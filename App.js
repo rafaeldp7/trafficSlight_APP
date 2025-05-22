@@ -27,7 +27,7 @@ function MainApp() {
   };
 
   return (
-    <SafeAreaProvider> {/* ✅ Wrap everything */}
+    <SafeAreaProvider>
       <PaperProvider>
         <NavigationContainer linking={linking}>
           {userToken ? <SignedInStack /> : <SignedOutStack />}

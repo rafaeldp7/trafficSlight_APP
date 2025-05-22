@@ -374,7 +374,7 @@ export default function AddMotorScreen({ navigation }) {
 
   return (
     <SafeAreaView style={tw`flex-1 bg-gray-50`}>
-      <View style={tw`px-5 py-4 border-b border-gray-200 flex-row items-center bg-white`}>
+      <View style={tw`px-5 py-4 pt-10 border-b border-gray-200 flex-row items-center bg-white`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>

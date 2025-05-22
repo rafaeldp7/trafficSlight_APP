@@ -24,7 +24,7 @@ import * as FileSystem from "expo-file-system";
 import polyline from "@mapbox/polyline";
 import Tts from "react-native-tts";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
-import { useUser } from "../../AuthContext/UserContext";
+import { useUser } from "../../../AuthContext/UserContext";
 
 // ----------------------------------------------------------------
 // Types

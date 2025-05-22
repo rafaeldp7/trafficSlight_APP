@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
 } from "react-native";
 import {
   TextInput,
@@ -13,10 +14,25 @@ import {
   Portal,
   Modal,
   List,
+  HelperText,
 } from "react-native-paper";
 import { AuthContext } from "../AuthContext/AuthContext";
 import { LOCALHOST_IP } from "@env";
 
+// Sample barangay data for Valenzuela
+const valenzuelaData = {
+  "Arkong Bato": ["Street 1", "Street 2", "Main Road"],
+  "Bagbaguin": ["Bagbaguin St", "Commerce Ave", "Industrial St"],
+  "Bignay": ["Bignay Road", "Poblacion St", "Market St"],
+  "Bisig": ["Bisig Ave", "Unity St", "Community Road"],
+  "Canumay East": ["East Ave", "Sunrise St", "Dawn Road"],
+  "Canumay West": ["West Ave", "Sunset St", "Dusk Road"],
+  "Coloong": ["Coloong St", "Village Road", "Riverside Ave"],
+  "Dalandanan": ["Dalandanan Ave", "Port Road", "Harbor St"],
+  "Paso de Blas": ["Paso St", "Blas Ave", "Heritage Road"],
+  "Poblacion": ["Poblacion Ave", "Town Square", "Central St"],
+  // Add more barangays as needed
+};
 
 const inputTheme = {
   colors: {
@@ -35,221 +51,335 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [secureText, setSecureText] = useState(true);
+  const [confirmSecureText, setConfirmSecureText] = useState(true);
   const [province, setProvince] = useState("Metro Manila");
   const [city, setCity] = useState("Valenzuela");
   const [barangay, setBarangay] = useState("");
   const [street, setStreet] = useState("");
   const [barangayModal, setBarangayModal] = useState(false);
+  const [streetModal, setStreetModal] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Validation states
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
 
   const { login } = useContext(AuthContext);
 
-const handleRegister = async () => {
-  if (loading) return;
-  setLoading(true);
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-
-  if (!name || !email || !password || !confirmPassword || !city || !province || !barangay || !street) {
-    Alert.alert("Error", "Please fill out all fields");
-    setLoading(false);
-    return;
-  }
-
-  if (!emailRegex.test(email)) {
-    Alert.alert("Invalid Email", "Please enter a valid email address.");
-    setLoading(false);
-    return;
-  }
-
-  if (!passwordRegex.test(password)) {
-    Alert.alert(
-      "Weak Password",
-      "Password must be at least 8 characters long and include both letters and numbers."
-    );
-    setLoading(false);
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    Alert.alert("Error", "Passwords do not match");
-    setLoading(false);
-    return;
-  }
-
-  try {
-    const response = await fetch(`${LOCALHOST_IP}/api/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        email: email.toLowerCase(),
-        password,
-        city,
-        province,
-        barangay,
-        street,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.status === 201) {
-      Alert.alert(
-        "Success",
-        "Registration successful! Please verify your email.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // 👇 navigate to VerifyScreen and pass token
-              if (data.token) {
-                navigation.navigate("VerifyScreen", { token: data.token });
-              } else {
-                navigation.navigate("Login");
-              }
-            },
-          },
-        ]
-      );
-
-      setName("");
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
-      setBarangay("");
-      setStreet("");
-    } else {
-      const errorMsg = data?.msg || "Registration failed. Please try again.";
-      Alert.alert("Error", errorMsg);
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setEmailError("Email is required");
+      return false;
     }
-  } catch (error) {
-    console.error("Registration Error:", error);
-    Alert.alert("Error", "Something went wrong. Please try again later.");
-  }
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    setEmailError("");
+    return true;
+  };
 
-  setLoading(false);
-};
+  const validatePassword = (password) => {
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!password) {
+      setPasswordError("Password is required");
+      return false;
+    }
+    if (!passwordRegex.test(password)) {
+      setPasswordError("Password must be at least 8 characters long and include both letters and numbers");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const validateConfirmPassword = (confirmPassword) => {
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password");
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
+      return false;
+    }
+    setConfirmPasswordError("");
+    return true;
+  };
+
+  const handleRegister = async () => {
+    if (loading) return;
+    
+    // Validate all fields
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
+
+    if (!name || !email || !password || !confirmPassword || !city || !province || !barangay || !street) {
+      Alert.alert("Error", "Please fill out all fields");
+      return;
+    }
+
+    if (!isEmailValid || !isPasswordValid || !isConfirmPasswordValid) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(`${LOCALHOST_IP}/api/auth/register`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+          password,
+          city,
+          province,
+          barangay,
+          street: street.trim(),
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const data = await response.json();
+
+      if (response.status === 201) {
+        Alert.alert(
+          "Registration Successful! 🎉",
+          "Please check your email for a verification link to activate your account.",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Clear form
+                setName("");
+                setEmail("");
+                setPassword("");
+                setConfirmPassword("");
+                setBarangay("");
+                setStreet("");
+                
+                // Navigate to login or a verification waiting screen
+                navigation.navigate("Login");
+              },
+            },
+          ]
+        );
+      } else {
+        const errorMsg = data?.msg || data?.message || "Registration failed. Please try again.";
+        Alert.alert("Registration Failed", errorMsg);
+      }
+    } catch (error) {
+      console.error("Registration Error:", error);
+      
+      if (error.name === 'AbortError') {
+        Alert.alert("Timeout", "Request timed out. Please check your connection and try again.");
+      } else {
+        Alert.alert("Error", "Something went wrong. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableStreets = () => {
+    return barangay && valenzuelaData[barangay] ? valenzuelaData[barangay] : [];
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create a New Account</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Create a New Account</Text>
 
-      <TextInput
-        label="Name"
-        value={name}
-        onChangeText={setName}
-        mode="outlined"
-        style={styles.input}
-        theme={inputTheme}
-      />
-      <TextInput
-        label="Email"
-        value={email}
-        onChangeText={(text) => setEmail(text.toLowerCase())}
-        mode="outlined"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        style={styles.input}
-        theme={inputTheme}
-      />
-      <TextInput
-        label="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={secureText}
-        mode="outlined"
-        style={styles.input}
-        theme={inputTheme}
-        right={
-          <TextInput.Icon
-            icon={secureText ? "eye-off" : "eye"}
-            onPress={() => setSecureText(!secureText)}
-            color="#007AFF"
-          />
-        }
-      />
-      <TextInput
-        label="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry={secureText}
-        mode="outlined"
-        style={styles.input}
-        theme={inputTheme}
-        right={
-          <TextInput.Icon
-            icon={secureText ? "eye-off" : "eye"}
-            onPress={() => setSecureText(!secureText)}
-            color="#007AFF"
-          />
-        }
-      />
-      <TextInput
-        label="Barangay"
-        value={barangay}
-        mode="outlined"
-        onFocus={() => {
-          setBarangayModal(true);
-          Keyboard.dismiss();
-        }}
-        style={styles.input}
-        theme={inputTheme}
-      />
-      <Portal>
-        <Modal
-          visible={barangayModal}
-          onDismiss={() => setBarangayModal(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <ScrollView>
-            {Object.keys(valenzuelaData).map((b) => (
+        <TextInput
+          label="Full Name"
+          value={name}
+          onChangeText={setName}
+          mode="outlined"
+          style={styles.input}
+          theme={inputTheme}
+          autoCapitalize="words"
+        />
+
+        <TextInput
+          label="Email Address"
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text.toLowerCase());
+            if (emailError) validateEmail(text.toLowerCase());
+          }}
+          onBlur={() => validateEmail(email)}
+          mode="outlined"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          style={styles.input}
+          theme={inputTheme}
+          error={!!emailError}
+        />
+        {emailError ? <HelperText type="error" visible={!!emailError}>{emailError}</HelperText> : null}
+
+        <TextInput
+          label="Password"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (passwordError) validatePassword(text);
+            if (confirmPassword && confirmPasswordError) validateConfirmPassword(confirmPassword);
+          }}
+          onBlur={() => validatePassword(password)}
+          secureTextEntry={secureText}
+          mode="outlined"
+          style={styles.input}
+          theme={inputTheme}
+          error={!!passwordError}
+          right={
+            <TextInput.Icon
+              icon={secureText ? "eye-off" : "eye"}
+              onPress={() => setSecureText(!secureText)}
+              iconColor="#007AFF"
+            />
+          }
+        />
+        {passwordError ? <HelperText type="error" visible={!!passwordError}>{passwordError}</HelperText> : null}
+
+        <TextInput
+          label="Confirm Password"
+          value={confirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (confirmPasswordError) validateConfirmPassword(text);
+          }}
+          onBlur={() => validateConfirmPassword(confirmPassword)}
+          secureTextEntry={confirmSecureText}
+          mode="outlined"
+          style={styles.input}
+          theme={inputTheme}
+          error={!!confirmPasswordError}
+          right={
+            <TextInput.Icon
+              icon={confirmSecureText ? "eye-off" : "eye"}
+              onPress={() => setConfirmSecureText(!confirmSecureText)}
+              iconColor="#007AFF"
+            />
+          }
+        />
+        {confirmPasswordError ? <HelperText type="error" visible={!!confirmPasswordError}>{confirmPasswordError}</HelperText> : null}
+
+        <TextInput
+          label="Barangay"
+          value={barangay}
+          mode="outlined"
+          onFocus={() => {
+            setBarangayModal(true);
+            Keyboard.dismiss();
+          }}
+          style={styles.input}
+          theme={inputTheme}
+          right={<TextInput.Icon icon="chevron-down" iconColor="#007AFF" />}
+        />
+
+        <TextInput
+          label="Street"
+          value={street}
+          mode="outlined"
+          onFocus={() => {
+            if (barangay && getAvailableStreets().length > 0) {
+              setStreetModal(true);
+              Keyboard.dismiss();
+            }
+          }}
+          onChangeText={setStreet}
+          style={styles.input}
+          theme={inputTheme}
+          right={barangay && getAvailableStreets().length > 0 ? 
+            <TextInput.Icon icon="chevron-down" iconColor="#007AFF" /> : null
+          }
+        />
+
+        {/* Barangay Modal */}
+        <Portal>
+          <Modal
+            visible={barangayModal}
+            onDismiss={() => setBarangayModal(false)}
+            contentContainerStyle={styles.modal}
+          >
+            <Text style={styles.modalTitle}>Select Barangay</Text>
+            <ScrollView style={styles.modalScroll}>
+              {Object.keys(valenzuelaData).map((b) => (
+                <List.Item
+                  key={b}
+                  title={b}
+                  titleStyle={styles.listItem}
+                  onPress={() => {
+                    setBarangay(b);
+                    setStreet("");
+                    setBarangayModal(false);
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </Modal>
+        </Portal>
+
+        {/* Street Modal */}
+        <Portal>
+          <Modal
+            visible={streetModal}
+            onDismiss={() => setStreetModal(false)}
+            contentContainerStyle={styles.modal}
+          >
+            <Text style={styles.modalTitle}>Select Street</Text>
+            <ScrollView style={styles.modalScroll}>
+              {getAvailableStreets().map((s, index) => (
+                <List.Item
+                  key={index}
+                  title={s}
+                  titleStyle={styles.listItem}
+                  onPress={() => {
+                    setStreet(s);
+                    setStreetModal(false);
+                  }}
+                />
+              ))}
               <List.Item
-                key={b}
-                title={b}
-                titleStyle={styles.listItem}
+                title="Other (Type manually)"
+                titleStyle={[styles.listItem, { fontStyle: 'italic' }]}
                 onPress={() => {
-                  setBarangay(b);
-                  setStreet("");
-                  setBarangayModal(false);
+                  setStreetModal(false);
                 }}
               />
-            ))}
-          </ScrollView>
-        </Modal>
-      </Portal>
+            </ScrollView>
+          </Modal>
+        </Portal>
 
-      <TextInput
-        label="Street"
-        value={street}
-        onChangeText={setStreet}
-        mode="outlined"
-        style={styles.input}
-        theme={inputTheme}
-      />
+        <Button
+          mode="contained"
+          onPress={handleRegister}
+          style={styles.button}
+          labelStyle={styles.buttonText}
+          contentStyle={styles.buttonContent}
+          loading={loading}
+          disabled={loading}
+        >
+          {loading ? "Creating Account..." : "Register"}
+        </Button>
 
-
-      <Button
-        mode="contained"
-        onPress={handleRegister}
-        style={styles.button}
-        labelStyle={styles.buttonText}
-        contentStyle={styles.buttonContent}
-        loading={loading}
-        disabled={loading}
-      >
-        Register
-      </Button>
-
-      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-        <Text style={styles.loginText}>
-          Already have an account? <Text style={styles.loginLink}>Login</Text>
-        </Text>
-      </TouchableOpacity>
-
-
-    </View>
+        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+          <Text style={styles.loginText}>
+            Already have an account? <Text style={styles.loginLink}>Login</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -257,36 +387,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "black",
+  },
+  content: {
     padding: 24,
-    justifyContent: "center",
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   title: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 30,
     textAlign: "center",
   },
   input: {
-    marginBottom: 15,
+    marginBottom: 8,
     color: "#fff",
   },
   button: {
     backgroundColor: "#007AFF",
     borderRadius: 30,
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
   },
   buttonContent: {
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
   loginText: {
     marginTop: 30,
     color: "#aaa",
     textAlign: "center",
+    fontSize: 16,
   },
   loginLink: {
     color: "#007AFF",
@@ -297,9 +432,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#1c1c1e",
     padding: 20,
     marginHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 15,
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  modalScroll: {
+    maxHeight: 300,
   },
   listItem: {
     color: "#fff",
+    fontSize: 16,
   },
 });

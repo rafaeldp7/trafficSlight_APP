@@ -16,14 +16,14 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import MapView from "react-native-maps";
 
-import { useUser } from "../../AuthContext/UserContext";
+import { useUser } from "../../../AuthContext/UserContext";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
 
-import MapComponent from "../loggedIn/MapComponent";
-import Controls from "../loggedIn/Controls";
-import SearchBar from "../loggedIn/SearchBar";
-import RouteDetailsBottomSheet from "../loggedIn/RouteDetailsBottomSheet";
-import TripSummaryModal from "../loggedIn/TripSummaryModal";
+import MapComponent from "../may22/MapComponent";
+import Controls from "../Controls";
+import SearchBar from "../SearchBar";
+import RouteDetailsBottomSheet from "../may22/RouteDetailsBottomSheet";
+import TripSummaryModal from "../may22/TripSummaryModal";
 import useLocationTracker from "../hooks/useLocationTracker";
 import useRoutes from "../hooks/useRoutes";
 

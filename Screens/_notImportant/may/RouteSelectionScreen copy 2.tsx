@@ -16,7 +16,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import { useFocusEffect } from "@react-navigation/native";
-import HamburgerMenu from "../loggedIn/HamburgerMenu";
+import HamburgerMenu from "../may22/HamburgerMenu";
 
 const FAB = ({ onPress, label }: { onPress: () => void; label: string }) => (
   <TouchableOpacity

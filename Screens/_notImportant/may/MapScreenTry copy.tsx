@@ -21,7 +21,7 @@ import MapViewDirections from "react-native-maps-directions";
 import * as Location from "expo-location";
 import polyline from "@mapbox/polyline";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
-import { useUser } from "../../AuthContext/UserContext";
+import { useUser } from "../../../AuthContext/UserContext";
 
 // ----------------------------------------------------------------
 // Constants & Helpers

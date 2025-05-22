@@ -27,6 +27,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Easing } from "react-native";
 import "react-native-get-random-values";
 import { GOOGLE_MAPS_API_KEY } from "@env";
+import CustomMapViewComponent from "../MapScreen/customMapView";
+import RouteDetailsDrawer from "../MapScreen/RouteDetailsView";
+import TripSummaryModal from "../MapScreen/tripSummary";
+import MenuButton from "../MapScreen/menuButton";
 
 
 // Helper: Decode polyline from Google Directions API (basic implementation)
@@ -69,12 +73,6 @@ const computeDistanceFromCoordinates = (coords, getDistance) => {
   return totalDistance / 1000;
 };
 
-// Reusable Components
-
-
-
-
-
 const ToggleMapStyleButton = ({ mapStyle, toggle }) => (
   <TouchableOpacity style={styles.styleToggle} onPress={toggle} accessible accessibilityLabel="Toggle map style">
     <MaterialIcons name={mapStyle === "standard" ? "wb-sunny" : "nightlight-round"} size={30} color="yellow" />
@@ -107,8 +105,18 @@ const MyLocationButton = ({ onPress }) => (
 
 
 
-
-
+const goToMyLocation = (mapRef, currentLocation) => {
+  if (mapRef && mapRef.current && currentLocation) {
+    mapRef.current.animateToRegion(
+      {
+        ...currentLocation,
+        latitudeDelta: 0.0015,
+        longitudeDelta: 0.0015,
+      },
+      1000
+    );
+  }
+};
 
 const RouteSelectionScreen = ({ navigation }) => {
   const [region, setRegion] = useState({
@@ -191,48 +199,66 @@ const RouteSelectionScreen = ({ navigation }) => {
     return 6371000 * c;
   }, []);
 
-  const startTracking = async () => {
-    try {
-      const locWatcher = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 10 },
-        (loc) => {
-          const newLocation = {
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-          };
-          setCurrentLocation(newLocation);
-          // Check deviation from route
-          if (destination && route && route.legs && route.legs[0]?.steps) {
-            const steps = route.legs[0].steps;
-            const closestStep = steps.reduce((prev, curr) => {
-              const prevDistance = getDistance(newLocation, {
-                latitude: prev.end_location.lat,
-                longitude: prev.end_location.lng,
-              });
-              const currDistance = getDistance(newLocation, {
-                latitude: curr.end_location.lat,
-                longitude: curr.end_location.lng,
-              });
-              return currDistance < prevDistance ? curr : prev;
+const startTracking = async () => {
+  try {
+    const locWatcher = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 10 },
+      (loc) => {
+        const newLocation = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        };
+        setCurrentLocation(newLocation);
+
+        // Check deviation from route
+        if (destination && route && route.legs && route.legs[0]?.steps) {
+          const steps = route.legs[0].steps;
+          const closestStep = steps.reduce((prev, curr) => {
+            const prevDistance = getDistance(newLocation, {
+              latitude: prev.end_location.lat,
+              longitude: prev.end_location.lng,
             });
-            const closestPoint = {
-              latitude: closestStep.end_location.lat,
-              longitude: closestStep.end_location.lng,
+            const currDistance = getDistance(newLocation, {
+              latitude: curr.end_location.lat,
+              longitude: curr.end_location.lng,
+            });
+            return currDistance < prevDistance ? curr : prev;
+          });
+          const closestPoint = {
+            latitude: closestStep.end_location.lat,
+            longitude: closestStep.end_location.lng,
+          };
+          const deviation = getDistance(newLocation, closestPoint);
+          console.log("Deviation from route (meters):", deviation);
+
+          if (deviation > 100) {
+            Alert.alert("Off Route", "You have deviated from the route. Recalculating...");
+            Speech.speak("You have deviated from the route. Recalculating your route.");
+
+            const updatedRoute = {
+              origin: newLocation,
+              destination: destination
             };
-            const deviation = getDistance(newLocation, closestPoint);
-            console.log("Deviation from route (meters):", deviation);
-            if (deviation > 100) {
-              Alert.alert("Off Route", "You have deviated from the route. Please check your navigation.");
-              Speech.speak("You have deviated from the route. Please check your navigation.");
-            }
+
+            setRoute(updatedRoute);
+
+            // Optional: update map region to center between new origin and destination
+            setRegion({
+              latitude: (newLocation.latitude + destination.latitude) / 2,
+              longitude: (newLocation.longitude + destination.longitude) / 2,
+              latitudeDelta: Math.abs(newLocation.latitude - destination.latitude) + 0.01,
+              longitudeDelta: Math.abs(newLocation.longitude - destination.longitude) + 0.01,
+            });
           }
         }
-      );
-      setWatcher(locWatcher);
-    } catch (error) {
-      alert("Error starting tracking.");
-    }
-  };
+      }
+    );
+    setWatcher(locWatcher);
+  } catch (error) {
+    alert("Error starting tracking.");
+  }
+};
+
 
   const toggleMapStyle = () => setMapStyle((prev) => (prev === "standard" ? "dark" : "standard"));
 
@@ -316,6 +342,33 @@ const RouteSelectionScreen = ({ navigation }) => {
     </View>
   );
 
+  async function saveToSaved(destination: any) {
+    try {
+      // Load existing saved locations from AsyncStorage
+      const saved = await AsyncStorage.getItem("savedLocations");
+      let savedArr = saved ? JSON.parse(saved) : [];
+
+      // Avoid duplicates (by lat/lng)
+      const exists = savedArr.some(
+        (loc: any) =>
+          loc.latitude === destination.latitude &&
+          loc.longitude === destination.longitude
+      );
+      if (exists) {
+        Alert.alert("Already Saved", "This destination is already in your favorites.");
+        return;
+      }
+
+      // Add new destination and save back to AsyncStorage
+      savedArr.push(destination);
+      await AsyncStorage.setItem("savedLocations", JSON.stringify(savedArr));
+      setSavedLocations(savedArr);
+      Alert.alert("Saved", "Destination added to favorites!");
+    } catch (error) {
+      Alert.alert("Error", "Failed to save destination.");
+    }
+  }
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
@@ -323,12 +376,7 @@ const RouteSelectionScreen = ({ navigation }) => {
         style={styles.container}
         keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        <DrawerLayoutAndroid
-          ref={drawer}
-          drawerWidth={300}
-          drawerPosition={drawerPosition}
-          renderNavigationView={navigationView}
-        >
+
           <TripSummaryModal
             visible={showSummary}
             tripSummary={tripSummary}
@@ -376,12 +424,14 @@ const RouteSelectionScreen = ({ navigation }) => {
               destination={destination}
               getDistance={getDistance}
               setRouteDetailsVisible={setRouteDetailsVisible}
+              computeDistanceFromCoordinates={computeDistanceFromCoordinates}
+              styles={styles}
             />
           )}
 
           <FAB onPress={() => { navigation.navigate("MapScreen"); }} label="Where to?" />
           <MyLocationButton onPress={() => goToMyLocation(mapRef, currentLocation)} />
-        </DrawerLayoutAndroid>
+
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );

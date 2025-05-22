@@ -40,7 +40,7 @@ export default function HomeScreen() {
                 {/* Motorcycle Image Placeholder */}
                 <View style={tw`w-20 h-20 bg-gray-800 rounded-lg`}>
                     <Image 
-                        source={require("../assets/icons/motor.jpg")}  
+                        source={require("../../../assets/icons/motor.jpg")}  
                         style={{ width: 80, height: 80, borderRadius: 5 }} 
                     />
                 </View>
