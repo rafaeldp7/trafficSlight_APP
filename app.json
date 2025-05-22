@@ -1,18 +1,17 @@
 {
   "expo": {
-    "scheme": "frontend",
+    "scheme": "trafficslight",
     "name": "TrafficSlight",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "platforms": ["ios", "android","web"],
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true
@@ -20,8 +19,8 @@
     "android": {
       "package": "com.rafaeldp07.trafficslight",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#000000"
       },
       "permissions": ["ACCESS_FINE_LOCATION"]
     },

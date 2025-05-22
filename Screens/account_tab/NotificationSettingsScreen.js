@@ -14,7 +14,7 @@ export default function NotificationSettingsScreen({ navigation }) {
   };
 
   return (
-    <View style={tw`flex-1 bg-white pt-5`}>
+    <View style={tw`flex-1 bg-white pt-7`}>
       {/* Header */}
       <View style={tw`px-5 py-4 border-b border-gray-200 flex-row items-center`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { Modal } from 'react-native-paper';
 
 const App = () => {
   const drawer = useRef<DrawerLayoutAndroid>(null);
@@ -26,11 +27,7 @@ const App = () => {
 
 
   return (
-    <DrawerLayoutAndroid
-      ref={drawer}
-      drawerWidth={300}
-      drawerPosition={drawerPosition}
-      renderNavigationView={navigationView}>
+    <Modal visible={true}>
       <View style={styles.container}>
 
         <Text style={styles.paragraph}>
@@ -41,7 +38,7 @@ const App = () => {
           onPress={() => drawer.current?.openDrawer()}
         />
       </View>
-    </DrawerLayoutAndroid>
+    </Modal>
   );
 };
 

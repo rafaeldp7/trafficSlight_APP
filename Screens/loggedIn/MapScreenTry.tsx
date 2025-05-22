@@ -269,6 +269,7 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
                 latitudeDelta: 0.005,
                 longitudeDelta: 0.005,
               });
+            
             }
           }
         );
@@ -325,6 +326,7 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
       const data = await res.json();
       if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
 
+      if (data.routes.length === 0) throw new Error("No routes found");
       // Process routes
       const processRoute = (r: any, i: number) => {
         const leg = r.legs[0];
@@ -368,6 +370,8 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
           description: 'Accident reported ahead'
         }
       ];
+
+      
 
       setTripSummary(allRoutes[0]);
       setAlternativeRoutes(alternatives);
@@ -674,6 +678,7 @@ const darkMapStyle = [
 
 const styles = StyleSheet.create({
   safeArea: {
+    paddingTop: Platform.OS === "android" ? 25 : 0,
     flex: 1,
     backgroundColor: '#fff',
   },

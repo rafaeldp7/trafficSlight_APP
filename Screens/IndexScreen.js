@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 
-const Screen = ({ navigation }) => {
+const IndexScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Logo */}
@@ -24,7 +24,7 @@ const Screen = ({ navigation }) => {
   );
 };
 
-export default Screen;
+export default IndexScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 30,
+    color: '#fff',
   },
   button: {
     backgroundColor: '#007AFF',

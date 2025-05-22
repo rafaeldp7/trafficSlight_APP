@@ -7,11 +7,11 @@ import ProfileScreen from "../Screens/loggedIn/ProfileScreen";
 import RouteSelectionScreen from "../Screens/loggedIn/RouteSelectionScreen";
 import TrackingScreen from "../Screens/loggedIn/TrackingScreen";
 import HistoryScreen from "../Screens/loggedIn/HistoryScreen";
-import AddMotorScreen from "../Screens/loggedIn/AddMotorScreen";
-import HelpCenterScreen from "../Screens/loggedIn/HelpCenterScreen";
-import ReportBugScreen from "../Screens/loggedIn/ReportBug";
-import AccountSettingsScreen from "../Screens/loggedIn/AccountSettingsScreen";
-import NotificationSettingsScreen from "../Screens/loggedIn/NotificationSettingsScreen";
+import AddMotorScreen from "../Screens/account_tab/AddMotorScreen";
+import HelpCenterScreen from "../Screens/account_tab/HelpCenterScreen";
+import ReportBugScreen from "../Screens/account_tab/ReportBug";
+import AccountSettingsScreen from "../Screens/account_tab/AccountSettingsScreen";
+import NotificationSettingsScreen from "../Screens/account_tab/NotificationSettingsScreen";
 import SelectRouteScreen from "../Screens/loggedIn/SelectRouteScreen";
 import MapScreenTry from "../Screens/loggedIn/MapScreenTry";
 import Menu from "../Screens/loggedIn/Menu";
@@ -29,8 +29,8 @@ function MainTabs() {
 
           if (route.name === "Home") {
             iconName = "home";
-          } else if (route.name === "Activity") {
-            iconName = "history";
+          } else if (route.name === "Map") {
+            iconName = "map";
           } else if (route.name === "Account") {
             iconName = "account";
           }
@@ -42,7 +42,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={RouteSelectionScreen} />
-      <Tab.Screen name="Activity" component={HistoryScreen} />
+      <Tab.Screen name="Map" component={RouteSelectionScreen} />
       <Tab.Screen name="Account" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -51,7 +51,10 @@ function MainTabs() {
 export default function SignedInStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      
       <Stack.Screen name="MainTabs" component={MainTabs} />
+
+      
       <Stack.Screen name="RouteSelectionScreen" component={RouteSelectionScreen} />
       <Stack.Screen name="TrackingScreen" component={TrackingScreen} />
       <Stack.Screen name="AddMotorScreen" component={AddMotorScreen} />

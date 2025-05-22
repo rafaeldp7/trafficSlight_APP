@@ -1,103 +1,215 @@
 import React, { useState, useEffect, useContext } from "react";
-import { View, Alert } from "react-native";
-import { TextInput, Button, Card, IconButton, Text } from "react-native-paper"; // Import IconButton
+import { View, Alert, Text, StyleSheet, Image } from "react-native";
+import { TextInput, Button } from "react-native-paper";
 import * as Google from "expo-auth-session/providers/google";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { GOOGLE_CLIENT_ID, LOCALHOST_IP } from "@env";
-import tw from "twrnc"; // Import Tailwind
-
-import { AuthContext } from "../AuthContext/AuthContext"; // Import AuthContext
+import { AuthContext } from "../AuthContext/AuthContext";
 import { useUser } from "../AuthContext/UserContext";
-
-console.log("LOCALHOST_IP:", LOCALHOST_IP); // Debugging
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [secureText, setSecureText] = useState(true); // Toggle state
+  const [secureText, setSecureText] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
+    scopes: ["profile", "email"],
   });
-  const { login } = useContext(AuthContext); // Get login function from AuthContext
-  const { saveUser } = useUser(); // Import saveUser from UserContext
 
+  const { login } = useContext(AuthContext);
+  const { saveUser } = useUser();
 
-  // Handle Email/Password Login
   const handleLogin = async () => {
-  if (!email || !password) {
-    Alert.alert("Error", "Please fill in both fields");
-    return;
-  }
-
-  console.log("Fetching from:", `${LOCALHOST_IP}/api/auth/login`);
-
-  try {
-    const res = await fetch(`${LOCALHOST_IP}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      await login(data.token); // Save token in AuthContext
-      await saveUser(data.user); // Save user details in UserContext
-
-      Alert.alert("Login Successful");
-      // navigation.replace("Home");
-    } else {
-      Alert.alert("Error", data.msg || "Login failed");
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in both fields");
+      return;
     }
-  } catch (error) {
-    console.error("Fetch Error:", error);
-    Alert.alert("Error", "Network request failed. Check API connection.");
-  }
-};
-  
 
-  // Handle Google OAuth Login
+    setLoading(true);
+    try {
+      const res = await fetch(`${LOCALHOST_IP}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        await login(data.token);
+        if (data.user) {
+          await saveUser(data.user);
+        }
+        Alert.alert("Login Successful");
+        // navigation.navigate("Main"); // <- replace with your actual screen name
+      } else {
+        setPassword("");
+        Alert.alert("Error", data.msg || "Login failed");
+      }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+      Alert.alert("Error", "Network request failed. Check API connection.");
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (response?.type === "success") {
       const { authentication } = response;
-      AsyncStorage.setItem("token", authentication.accessToken);
-      Alert.alert("Login Successful with Google");
-      navigation.replace("Home");
+      fetch(`${LOCALHOST_IP}/api/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: authentication.idToken || authentication.accessToken,
+        }),
+      })
+        .then((res) => res.json())
+        .then(async (data) => {
+          if (data.token) {
+            await login(data.token);
+            if (data.user) {
+              await saveUser(data.user);
+            }
+            Alert.alert("Login Successful with Google");
+            navigation.replace("Main"); // <- replace if needed
+          } else {
+            Alert.alert("Google Login failed");
+          }
+        })
+        .catch((err) => {
+          console.error("Google login error:", err);
+          Alert.alert("Network error during Google login");
+        });
     }
   }, [response]);
 
   return (
-    <View style={tw`flex-1 justify-center p-5 bg-gray-100`}>
-      <Card style={tw`p-5 shadow-lg`}>
-        <Card.Title title="Login" />
-        <Card.Content>
-          <TextInput label="Email" value={email} onChangeText={setEmail} mode="outlined" style={tw`mb-3`} />
-          <TextInput
-            label="Password"
-            value={password}
-            secureTextEntry={secureText} // Toggle visibility
-            onChangeText={setPassword}
-            mode="outlined"
-            style={tw`mb-5`}
-            right={
-              <TextInput.Icon 
-                icon={secureText ? "eye-off" : "eye"} 
-                onPress={() => setSecureText(!secureText)}
-              />
-            }
+    <View style={styles.container}>
+      <Image source={require("../assets/logo.png")} style={styles.logo} />
+
+      <Text style={styles.title}>Login to Your Account</Text>
+
+      <TextInput
+        label="Email"
+        value={email}
+        onChangeText={setEmail}
+        mode="outlined"
+        keyboardType="email-address"
+        autoCapitalize="none"
+        style={styles.input}
+        theme={{ colors: { text: "#fff", primary: "#007AFF", background: "#1c1c1e" } }}
+        textColor="#fff"
+      />
+      <TextInput
+        label="Password"
+        value={password}
+        secureTextEntry={secureText}
+        onChangeText={setPassword}
+        mode="outlined"
+        style={styles.input}
+        theme={{ colors: { text: "#fff", primary: "#007AFF", background: "#1c1c1e" } }}
+        textColor="#fff"
+        right={
+          <TextInput.Icon
+            icon={secureText ? "eye-off" : "eye"}
+            onPress={() => setSecureText(!secureText)}
+            color="#007AFF"
           />
-          <Button mode="contained" onPress={handleLogin} style={tw`bg-blue-500 py-2`}>
-            Login
-          </Button>
-          <Button mode="outlined" onPress={() => promptAsync()} style={tw`mt-3 border-blue-500`}>
-            Login with Google
-          </Button>
-          <Text style={tw`mt-5 text-center text-blue-500`} onPress={() => navigation.navigate("Register")}>
-            Don't have an account? Register
-          </Text>
-        </Card.Content>
-      </Card>
+        }
+      />
+
+      <Button
+        mode="contained"
+        onPress={handleLogin}
+        loading={loading}
+        disabled={loading}
+        style={styles.button}
+        labelStyle={styles.buttonText}
+        contentStyle={styles.buttonContent}
+      >
+        Login
+      </Button>
+
+      <Button
+        mode="outlined"
+        onPress={() => promptAsync()}
+        disabled={!request}
+        style={styles.googleButton}
+        labelStyle={styles.googleButtonText}
+        contentStyle={styles.buttonContent}
+      >
+        Login with Google
+      </Button>
+
+      <Text
+        style={styles.registerText}
+        onPress={() => navigation.navigate("Register")}
+      >
+        Don't have an account? <Text style={styles.registerLink}>Register</Text>
+      </Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+    padding: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+    resizeMode: "contain",
+  },
+  title: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 30,
+  },
+  input: {
+    width: "100%",
+    marginBottom: 15,
+    backgroundColor: "#1c1c1e",
+  },
+  button: {
+    backgroundColor: "#007AFF",
+    borderRadius: 30,
+    width: "100%",
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+  },
+  buttonContent: {
+    paddingVertical: 10,
+  },
+  googleButton: {
+    borderColor: "#007AFF",
+    borderWidth: 1,
+    borderRadius: 30,
+    width: "100%",
+    marginTop: 15,
+  },
+  googleButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+  },
+  registerText: {
+    marginTop: 30,
+    color: "#aaa",
+    textAlign: "center",
+  },
+  registerLink: {
+    color: "#007AFF",
+    fontWeight: "bold",
+    textDecorationLine: "underline",
+  },
+});

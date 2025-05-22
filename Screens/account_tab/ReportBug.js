@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
 import tw from "twrnc";
 
 export default function ReportBugScreen({ navigation }) {
@@ -15,17 +16,17 @@ export default function ReportBugScreen({ navigation }) {
   };
 
   return (
-    <View style={tw`flex-1 bg-white p-5`}>
+    <View style={tw`flex-1 bg-white pt-7`}>
       {/* Header */}
-      <View style={tw`flex-row items-center mb-4 pt-3`}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={tw`pt-2`}>
-          <Text style={tw`text-blue-500 text-lg`}>← Back</Text>
+      <View style={tw`px-5 py-4 border-b border-gray-200 flex-row items-center`}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={tw`text-xl font-bold ml-3   `}>Report a Bug</Text>
+        <Text style={tw`text-lg font-bold ml-4`}>Notifications</Text>
       </View>
 
       {/* Scrollable Bug Report Form */}
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView style={tw`p-5`}showsVerticalScrollIndicator={false}>
         <Text style={tw`text-lg font-semibold mb-2`}>Describe the Issue</Text>
 
         {/* Bug Title Input */}

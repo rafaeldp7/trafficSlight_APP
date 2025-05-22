@@ -71,9 +71,33 @@ const computeDistanceFromCoordinates = (coords, getDistance) => {
 
 // Reusable Components
 
+const TripSummaryModal = ({ visible, tripSummary, onClose }) => (
+  <Modal visible={visible} animationType="slide" transparent>
+    <View style={styles.modalBackground}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Trip Summary</Text>
+        <Text>
+          Distance: {tripSummary?.distance ? tripSummary.distance + " km" : "N/A"}
+        </Text>
+        <Text>
+          Duration: {tripSummary?.duration ? tripSummary.duration + " mins" : "N/A"}
+        </Text>
+        <Text>
+          Fuel Used: {tripSummary?.fuel ? tripSummary.fuel + " liters" : "N/A"}
+        </Text>
+        <TouchableOpacity style={styles.button} onPress={onClose}>
+          <Text style={styles.buttonText}>Close</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
 
-
-
+const MenuButton = ({ onPress }) => (
+  <TouchableOpacity onPress={onPress} style={styles.backButton} accessible accessibilityLabel="Back">
+    <MaterialIcons name="menu" size={28} color="blue" />
+  </TouchableOpacity>
+);
 
 const ToggleMapStyleButton = ({ mapStyle, toggle }) => (
   <TouchableOpacity style={styles.styleToggle} onPress={toggle} accessible accessibilityLabel="Toggle map style">
@@ -105,10 +129,392 @@ const MyLocationButton = ({ onPress }) => (
   </TouchableOpacity>
 );
 
+const SearchDrawer = ({
+  searchRef,
+  searchText,
+  setSearchText,
+  isTyping,
+  setIsTyping,
+  setDestination,
+  setRegion,
+  saveToRecent,
+  recentLocations,
+  savedLocations,
+  animateSearchDrawer,
+  searchBarAnim,
+}) => {
+  const [activeTab, setActiveTab] = useState("Recent");
+  return (
+    <Animated.View
+      style={[
+        styles.drawer,
+        {
+          height: "95%",
+          zIndex: 1001,
+          transform: [{ translateY: searchBarAnim }],
+        },
+      ]}
+    >
+      <GooglePlacesAutocomplete
+        ref={searchRef}
+        placeholder="Where to?"
+        fetchDetails={true}
+        onPress={(data, details = null) => {
+          if (details) {
+            const newDestination = {
+              latitude: details.geometry.location.lat,
+              longitude: details.geometry.location.lng,
+              address: data.description,
+            };
+            setDestination(newDestination);
+            setRegion({
+              latitude: newDestination.latitude,
+              longitude: newDestination.longitude,
+              latitudeDelta: 0.001,
+              longitudeDelta: 0.001,
+            });
+            saveToRecent(newDestination);
+            searchRef.current?.setAddressText("");
+            setIsTyping(false);
+            animateSearchDrawer(false);
+          }
+        }}
+        onFocus={() => setIsTyping(true)}
+        onBlur={() => setIsTyping(false)}
+        textInputProps={{
+          value: searchText,
+          onChangeText: setSearchText,
+          placeholderTextColor: "#888",
+          accessible: true,
+          accessibilityLabel: "Search for destination",
+        }}
+        query={{ key: GOOGLE_MAPS_API_KEY, language: "en" }}
+        styles={{
+          textInput: {
+            backgroundColor: "#fff",
+            borderRadius: 10,
+            paddingRight: 50,
+            paddingVertical: 10,
+            fontSize: 16,
+          },
+          container: { flex: 1, marginBottom: 10 },
+          listView: {
+            position: "absolute",
+            top: 50,
+            backgroundColor: "#fff",
+            width: "100%",
+            zIndex: 100,
+            elevation: 5,
+          },
+        }}
+      />
+      {searchText.length > 0 && (
+        <TouchableOpacity
+          style={styles.clearButton}
+          onPress={() => {
+            setSearchText("");
+            searchRef.current?.setAddressText("");
+            setIsTyping(false);
+          }}
+          accessible
+          accessibilityLabel="Clear search input"
+        >
+          <Text style={{ fontSize: 18, color: "#888" }}>✖</Text>
+        </TouchableOpacity>
+      )}
+      {!isTyping && (
+        <>
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity onPress={() => setActiveTab("Recent")}>
+              <Text style={[styles.tabText, activeTab === "Recent" && styles.activeTab]}>
+                Recent
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setActiveTab("Saved")}>
+              <Text style={[styles.tabText, activeTab === "Saved" && styles.activeTab]}>
+                Saved
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.tabContent}>
+            {activeTab === "Recent" &&
+              recentLocations.map(
+                (place, index) =>
+                  place?.address && (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => {
+                        setDestination(place);
+                        setRegion({
+                          latitude: place.latitude,
+                          longitude: place.longitude,
+                          latitudeDelta: 0.001,
+                          longitudeDelta: 0.001,
+                        });
+                        animateSearchDrawer(false);
+                      }}
+                    >
+                      <Text>{place.address}</Text>
+                    </TouchableOpacity>
+                  )
+              )}                  
+                 
+            {activeTab === "Saved" &&
+              savedLocations.map(
+                (place, index) =>
+                  place?.address && (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => {
+                        setDestination(place);
+                        setRegion({
+                          latitude: place.latitude,
+                          longitude: place.longitude,
+                          latitudeDelta: 0.001,
+                          longitudeDelta: 0.001,
+                        });
+                        animateSearchDrawer(false);
+                      }}
+                    >
 
+                      <Text>{place.address}</Text>
+                    </TouchableOpacity>
+                  )
+              )}
+          </ScrollView>
+        </>
+      )}
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => animateSearchDrawer(false)}
+        accessible
+        accessibilityLabel="Close search drawer"
+      >
+        <Text style={styles.closeButtonText}>✖ Close</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
+const CustomMapViewComponent = ({
+  mapRef,
+  region,
+  mapStyle,
+  currentLocation,
+  destination,
+  route,
+  selectedTab,
+  selectedAlternativeIndex,
+  alternativeRoutes,
+  onRouteReady,
+}) => (
+  <MapView
+    ref={mapRef}
+    style={styles.map}
+    provider={PROVIDER_GOOGLE}
+    region={region}
+    customMapStyle={
+      mapStyle === "dark"
+        ? [
+            { elementType: "geometry", stylers: [{ color: "#212121" }] },
+            { elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+            { elementType: "labels.text.stroke", stylers: [{ color: "#000000" }] },
+            { featureType: "road", elementType: "geometry", stylers: [{ color: "#383838" }] },
+            { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+            { featureType: "poi", elementType: "geometry", stylers: [{ color: "#2c2c2c" }] },
+          ]
+        : []
+    }
+    showsUserLocation
+    showsTraffic
+    showsMyLocationButton={false}
+  >
+    {route && selectedTab === "details" && (
+      <MapViewDirections
+        origin={route.origin}
+        destination={route.destination}
+        apikey={GOOGLE_MAPS_API_KEY}
+        strokeWidth={9}
+        strokeColor="#3498db"
+        optimizeWaypoints
+        alternatives
+        avoid="tolls|highways"
+        mode="TWOWHEELER"
+        onReady={onRouteReady}
+      />
+    )}
+    {selectedTab === "alternatives" &&
+      selectedAlternativeIndex !== null &&
+      alternativeRoutes[selectedAlternativeIndex] && (
+        <Polyline
+          coordinates={alternativeRoutes[selectedAlternativeIndex].coordinates}
+          strokeColor="#e74c3c"
+          strokeWidth={6}
+        />
+      )}
+    {currentLocation && (
+      <Marker
+        coordinate={currentLocation}
+        title="Your Location"
+        description="This is where you are."
+      >
+        <View style={{ alignItems: "center" }}>
+          <Image
+            source={require("../assets/icons/image.png")}
+            style={{ width: 40, height: 40 }}
+            resizeMode="contain"
+          />
+        </View>
+      </Marker>
+    )}
+    {destination && (
+      <Marker
+        coordinate={destination}
+        title="Destination"
+        description={destination?.address}
+      >
+        <Image
+          source={require("../assets/icons/checkered-flag.jpg")}
+          style={{ width: 40, height: 40 }}
+          resizeMode="contain"
+        />
+      </Marker>
+    )}
+  </MapView>
+);
 
+const RouteDetailsDrawer = ({
+  selectedTab,
+  setSelectedTab,
+  alternativeRoutes,
+  selectedAlternativeIndex,
+  setSelectedAlternativeIndex,
+  sortingCriteria,
+  handleSortingChange,
+  estimatedFuelUsage,
+  startNavigation,
+  destination,
+  getDistance,
+  setRouteDetailsVisible,
+}) => {
+  const selectedRoute =
+    selectedAlternativeIndex !== null ? alternativeRoutes[selectedAlternativeIndex] : null;
 
+  const distanceValue =
+    selectedRoute && selectedRoute.distance
+      ? selectedRoute.distance
+      : selectedRoute && selectedRoute.coordinates
+      ? computeDistanceFromCoordinates(selectedRoute.coordinates, getDistance)
+      : null;
+
+  const etaValue =
+    selectedRoute && (selectedRoute.eta || selectedRoute.duration)
+      ? selectedRoute.eta || selectedRoute.duration
+      : distanceValue
+      ? distanceValue
+      : null;
+
+  const trafficLevelValue =
+    selectedRoute && selectedRoute.trafficLevel ? selectedRoute.trafficLevel : "N/A";
+
+  return (
+    <Animated.View style={styles.routeDetailsDrawer}>
+      <View style={styles.routeDetailsHeader}>
+        <TouchableOpacity>
+          <Text style={styles.destinationText}>
+            {destination?.address ?? "📍 Select Destination"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.drawerTabs}>
+        <TouchableOpacity
+          onPress={() => {
+            setSelectedTab("details");
+            if (alternativeRoutes.length > 0) setSelectedAlternativeIndex(0);
+          }}
+        >
+          <Text style={[styles.drawerTabText, selectedTab === "details" && styles.drawerActiveTab]}>
+            Details
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setSelectedTab("alternatives")}>
+          <Text style={[styles.drawerTabText, selectedTab === "alternatives" && styles.drawerActiveTab]}>
+            Alternatives
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {selectedTab === "alternatives" && (
+        <>
+          <ScrollView horizontal style={styles.sortingContainer}>
+            {[
+              { label: "Short Dist. w/ Traffic", value: "short_distance_with_traffic" },
+              { label: "Long Dist. No Traffic", value: "long_distance_no_traffic" },
+              { label: "Long Dist. Low Gas", value: "long_distance_low_gas" },
+              { label: "Shortest Dist.", value: "shortest_distance" },
+              { label: "Lowest Gas", value: "lowest_gas_consumption" },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.value}
+                style={[styles.sortButton, sortingCriteria === item.value && styles.sortButtonActive]}
+                onPress={() => handleSortingChange(item.value)}
+              >
+                <Text style={styles.sortButtonText}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={styles.drawerContent}>
+            {alternativeRoutes.length > 0 ? (
+              alternativeRoutes.map((routeAlt, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.altRouteOption,
+                    selectedAlternativeIndex === index && styles.altRouteOptionSelected,
+                  ]}
+                  onPress={() => setSelectedAlternativeIndex(index)}
+                >
+                  <Text>{`Option ${index + 1}`}</Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text>No alternative routes available.</Text>
+            )}
+          </View>
+        </>
+      )}
+      {selectedTab === "details" && (
+        <View style={styles.drawerContent}>
+          <Text>{`Estimated Fuel (Range): ${
+            estimatedFuelUsage
+              ? `${(estimatedFuelUsage * 0.9).toFixed(2)}L - ${(estimatedFuelUsage * 1.1).toFixed(2)}L`
+              : "N/A"
+          }`}</Text>
+          <Text>{`Total Distance: ${distanceValue ? `${distanceValue.toFixed(2)} km` : "N/A"}`}</Text>
+          <Text>{`Estimated Time of Arrival: ${etaValue ? `${etaValue.toFixed(1)} min` : "N/A"}`}</Text>
+          <Text>{`Traffic Level: ${trafficLevelValue}`}</Text>
+        </View>
+      )}
+      <TouchableOpacity
+        style={[styles.goButton, !selectedRoute && styles.disabledButton]}
+        onPress={() => {
+          if (selectedRoute) startNavigation();
+        }}
+        disabled={!selectedRoute}
+        accessibilityLabel="Start Navigation"
+      >
+        <Text style={styles.goButtonText}>Start Navigation</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.goButton}
+        onPress={() => setRouteDetailsVisible(false)}
+        accessible
+        accessibilityLabel="Cancel and Close Drawer"
+      >
+        <Text style={styles.goButtonText}>Cancel</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
 
 const RouteSelectionScreen = ({ navigation }) => {
   const [region, setRegion] = useState({

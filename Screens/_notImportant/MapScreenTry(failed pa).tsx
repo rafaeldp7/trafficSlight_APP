@@ -19,11 +19,11 @@ import MapView from "react-native-maps";
 import { useUser } from "../../AuthContext/UserContext";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
 
-import MapComponent from "./MapComponent";
-import Controls from "./Controls";
-import SearchBar from "./SearchBar";
-import RouteDetailsBottomSheet from "./RouteDetailsBottomSheet";
-import TripSummaryModal from "./TripSummaryModal";
+import MapComponent from "../loggedIn/MapComponent";
+import Controls from "../loggedIn/Controls";
+import SearchBar from "../loggedIn/SearchBar";
+import RouteDetailsBottomSheet from "../loggedIn/RouteDetailsBottomSheet";
+import TripSummaryModal from "../loggedIn/TripSummaryModal";
 import useLocationTracker from "../hooks/useLocationTracker";
 import useRoutes from "../hooks/useRoutes";
 
