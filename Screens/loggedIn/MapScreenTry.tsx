@@ -357,96 +357,94 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
   //   setSavedLocations((prev) => [...prev, loc]);
   // }, []);
 
-  const fetchRoutes = useCallback(async () => {
-    if (!currentLocation || !destination) return;
-    setIsLoading(true);
+const fetchRoutes = useCallback(async () => {
+  if (!currentLocation || !destination) return;
+  setIsLoading(true);
 
-    console.log("Fetching routes..." + currentLocation, destination);
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
-      );
-      const data = await res.json();
-      if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
-      
-      console.log("Route data:", data);
-      if (data.routes.length === 0) throw new Error("No routes found");
-      
-      const processRoute = (r: any, i: number) => {
-        const leg = r.legs[0];
-        return {
-          id: `route-${i}`,
-          distance: leg.distance.value,
-          duration: leg.duration.value,
-          fuelEstimate: selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0,
-          trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
-          coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
-            latitude: lat,
-            longitude: lng,
-          })),
-          instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
-        };
+  console.log("🛰️ Fetching routes...");
+  console.log("📍 Origin:", currentLocation);
+  console.log("🎯 Destination:", destination);
+  console.log("🛵 Selected Motor:", selectedMotor);
+
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await res.json();
+    if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
+
+    console.log("🧭 Google API Routes:", data.routes.length);
+
+    if (data.routes.length === 0) throw new Error("No routes found");
+
+    const processRoute = (r: any, i: number) => {
+      const leg = r.legs[0];
+      const fuel = selectedMotor
+        ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency
+        : 0;
+
+      console.log(`🚗 Route-${i} ➤ Distance: ${leg.distance.value}m, Duration: ${leg.duration.value}s, Fuel Est: ${fuel.toFixed(2)}L`);
+
+      return {
+        id: `route-${i}`,
+        distance: leg.distance.value,
+        duration: leg.duration.value,
+        fuelEstimate: fuel,
+        trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
+        coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
+          latitude: lat,
+          longitude: lng,
+        })),
+        instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
       };
+    };
 
-      const allRoutes = data.routes.map(processRoute);
-      if (allRoutes.length < 2) Alert.alert("No alternatives found");
+    const allRoutes = data.routes.map(processRoute);
+    if (allRoutes.length < 2) Alert.alert("No alternatives found");
 
-      const alternatives = allRoutes.slice(1);
-      while (alternatives.length < 3) {
-        const last = alternatives[alternatives.length - 1];
-        alternatives.push({
-          ...last,
-          id: `route-${alternatives.length + 1}`,
-          distance: last.distance * 1.1,
-          duration: last.duration * 1.1,
-          fuelEstimate: last.fuelEstimate * 1.1,
-        });
-      }
-
-      // const incidents: TrafficIncident[] = [
-      //   {
-      //     id: "1",
-      //     location: {
-      //       latitude: (currentLocation.latitude + destination.latitude) / 2,
-      //       longitude: (currentLocation.longitude + destination.longitude) / 2,
-      //     },
-      //     type: "accident",
-      //     severity: "high",
-      //     description: "Accident reported ahead",
-      //   },
-      // ];
-
-      const fetchTrafficReports = async () => {
-        try {
-          const res = await fetch("https://ts-backend-1-jyit.onrender.com/api/reports");
-          const data = await res.json();
-          const formatted: TrafficIncident[] = data.map((r: any) => ({
-            id: r._id,
-            location: r.location,
-            type: r.reportType,
-            severity: r.reportType.toLowerCase().includes("accident") ? "high" : "medium",
-            description: r.description,
-          }));
-          setTrafficIncidents(formatted);
-        } catch (err) {
-          console.error("Failed to load traffic reports", err);
-        }
-      };
-
-
-      setTripSummary(allRoutes[0]);
-      setAlternativeRoutes(alternatives);
-      setSelectedRouteId(allRoutes[0].id);
-
-      setShowBottomSheet(true);
-      await fetchTrafficReports();
-
-    } catch (error) {
-      Alert.alert("Route Error", error.message);
-    } finally {
-      setIsLoading(false);
+    const alternatives = allRoutes.slice(1);
+    while (alternatives.length < 3) {
+      const last = alternatives[alternatives.length - 1];
+      alternatives.push({
+        ...last,
+        id: `route-${alternatives.length + 1}`,
+        distance: last.distance * 1.1,
+        duration: last.duration * 1.1,
+        fuelEstimate: last.fuelEstimate * 1.1,
+      });
     }
-  }, [currentLocation, destination, selectedMotor]);
+
+    const fetchTrafficReports = async () => {
+      try {
+        const res = await fetch("https://ts-backend-1-jyit.onrender.com/api/reports");
+        const data = await res.json();
+        const formatted: TrafficIncident[] = data.map((r: any) => ({
+          id: r._id,
+          location: r.location,
+          type: r.reportType,
+          severity: r.reportType.toLowerCase().includes("accident") ? "high" : "medium",
+          description: r.description,
+        }));
+        console.log("🚨 Traffic Reports Loaded:", formatted.length);
+        setTrafficIncidents(formatted);
+      } catch (err) {
+        console.error("⚠️ Failed to load traffic reports", err);
+      }
+    };
+
+    setTripSummary(allRoutes[0]);
+    setAlternativeRoutes(alternatives);
+    setSelectedRouteId(allRoutes[0].id);
+    setShowBottomSheet(true);
+    await fetchTrafficReports();
+
+  } catch (error) {
+    console.error("❌ Route Fetch Error:", error.message);
+    Alert.alert("Route Error", error.message);
+  } finally {
+    setIsLoading(false);
+  }
+}, [currentLocation, destination, selectedMotor]);
 
 
 
