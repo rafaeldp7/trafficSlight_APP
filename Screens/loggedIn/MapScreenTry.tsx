@@ -67,12 +67,21 @@ type SearchRef = React.RefObject<typeof GooglePlacesAutocomplete>;
 // ----------------------------------------------------------------
 // Constants
 // ----------------------------------------------------------------
-const FUEL_EFFICIENCY = 50;
 const DEFAULT_TRAFFIC_RATE = 1;
-const ARRIVAL_THRESHOLD = 50;
+const ARRIVAL_THRESHOLD = 50; // meters before declaring arrival
 const MAX_RECENT_LOCATIONS = 10;
 const OFFLINE_TILES_PATH = `${FileSystem.cacheDirectory}map_tiles/`;
-const VOICE_NAV_DELAY = 3000; // 3 seconds between instructions
+const VOICE_NAV_DELAY = 3000;
+
+const calculateFuelRange = (distance: number, fuelEfficiency: number) => {
+  const base = distance / fuelEfficiency;
+  return {
+    min: base * 0.9,
+    max: base * 1.1,
+    avg: base,
+  };
+};
+
 
 // ----------------------------------------------------------------
 // Helper Functions
@@ -106,6 +115,15 @@ const downloadOfflineMap = async (region: any) => {
 // ----------------------------------------------------------------
 // Components
 // ----------------------------------------------------------------
+type RouteDetailsBottomSheetProps = {
+  visible: boolean;
+  bestRoute: RouteData | null;
+  alternatives: RouteData[];
+  onClose: () => void;
+  selectedRouteId: string | null;
+  onSelectRoute: (id: string) => void;
+};
+
 const RouteDetailsBottomSheet = React.memo(({ visible, bestRoute, alternatives, onClose, selectedRouteId, onSelectRoute }: RouteDetailsBottomSheetProps) => {
   const [sortCriteria, setSortCriteria] = useState<"fuel" | "traffic" | "distance">("distance");
 
@@ -194,13 +212,11 @@ const TrafficIncidentMarker = ({ incident }: { incident: TrafficIncident }) => (
 // Main Component
 // ----------------------------------------------------------------
 export default function NavigationApp({ navigation }: { navigation: any }) {
-  // Refs
   const mapRef = useRef<MapView>(null);
-  const searchRef = useRef<GooglePlacesAutocomplete>(null);
+  const searchRef = useRef<GooglePlacesAutocompleteRef>(null);
   const voiceNavTimeout = useRef<NodeJS.Timeout>();
   const { user } = useUser();
 
-  // State
   const [searchText, setSearchText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -221,11 +237,24 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
   const [isOffline, setIsOffline] = useState(false);
   const [trafficIncidents, setTrafficIncidents] = useState<TrafficIncident[]>([]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [motorList, setMotorList] = useState<{ name: string; fuelEfficiency: number }[]>([]);
+  const [selectedMotor, setSelectedMotor] = useState<{ name: string; fuelEfficiency: number } | null>(null);
 
-  
-  
+  useEffect(() => {
+    const fetchMotors = async () => {
+      try {
+        const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user-motors/${user._id}`);
+        const data = await res.json();
+        setMotorList(data);
+      } catch (error) {
+        console.error("Failed to fetch motors", error);
+      }
+    };
+    if (user?._id) fetchMotors();
+  }, [user]);
 
-  // Derived state
+
+
   const selectedRoute = useMemo(() => {
     if (!selectedRouteId) return null;
     if (tripSummary?.id === selectedRouteId) return tripSummary;
@@ -315,77 +344,75 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
     setSavedLocations((prev) => [...prev, loc]);
   }, []);
 
-  const fetchRoutes = useCallback(async () => {
-    if (!currentLocation || !destination) return;
-    setIsLoading(true);
-    
-    try {
-      // Fetch routes
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
-      );
-      const data = await res.json();
-      if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
+const fetchRoutes = useCallback(async () => {
+  if (!currentLocation || !destination) return;
+  setIsLoading(true);
+  
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await res.json();
+    if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
+    if (data.routes.length === 0) throw new Error("No routes found");
 
-      if (data.routes.length === 0) throw new Error("No routes found");
-      // Process routes
-      const processRoute = (r: any, i: number) => {
-        const leg = r.legs[0];
-        return {
-          id: `route-${i}`,
-          distance: leg.distance.value,
-          duration: leg.duration.value,
-          fuelEstimate: leg.distance.value / 1000 / FUEL_EFFICIENCY,
-          trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))), // Simulate traffic data
-          coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({ latitude: lat, longitude: lng })),
-          instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
-        };
+    const processRoute = (r: any, i: number) => {
+      const leg = r.legs[0];
+      return {
+        id: `route-${i}`,
+        distance: leg.distance.value,
+        duration: leg.duration.value,
+        fuelEstimate: selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0,
+        trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
+        coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
+          latitude: lat,
+          longitude: lng,
+        })),
+        instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
       };
+    };
 
-      const allRoutes = data.routes.map(processRoute);
-      if (allRoutes.length < 2) Alert.alert("No alternatives found");
+    const allRoutes = data.routes.map(processRoute);
+    if (allRoutes.length < 2) Alert.alert("No alternatives found");
 
-      // Ensure 3 alternatives
-      const alternatives = allRoutes.slice(1);
-      while (alternatives.length < 3) {
-        const last = alternatives[alternatives.length - 1];
-        alternatives.push({
-          ...last,
-          id: `route-${alternatives.length + 1}`,
-          distance: last.distance * 1.1,
-          duration: last.duration * 1.1,
-          fuelEstimate: last.fuelEstimate * 1.1,
-        });
-      }
-
-      // Fetch traffic incidents (simulated)
-      const incidents: TrafficIncident[] = [
-        {
-          id: '1',
-          location: {
-            latitude: (currentLocation.latitude + destination.latitude) / 2,
-            longitude: (currentLocation.longitude + destination.longitude) / 2,
-          },
-          type: 'accident',
-          severity: 'high',
-          description: 'Accident reported ahead'
-        }
-      ];
-
-      
-
-      setTripSummary(allRoutes[0]);
-      setAlternativeRoutes(alternatives);
-      setSelectedRouteId(allRoutes[0].id);
-      setTrafficIncidents(incidents);
-      setShowBottomSheet(true);
-
-    } catch (error) {
-      Alert.alert("Route Error", error.message);
-    } finally {
-      setIsLoading(false);
+    const alternatives = allRoutes.slice(1);
+    while (alternatives.length < 3) {
+      const last = alternatives[alternatives.length - 1];
+      alternatives.push({
+        ...last,
+        id: `route-${alternatives.length + 1}`,
+        distance: last.distance * 1.1,
+        duration: last.duration * 1.1,
+        fuelEstimate: last.fuelEstimate * 1.1,
+      });
     }
-  }, [currentLocation, destination]);
+
+    const incidents: TrafficIncident[] = [
+      {
+        id: "1",
+        location: {
+          latitude: (currentLocation.latitude + destination.latitude) / 2,
+          longitude: (currentLocation.longitude + destination.longitude) / 2,
+        },
+        type: "accident",
+        severity: "high",
+        description: "Accident reported ahead",
+      },
+    ];
+
+    setTripSummary(allRoutes[0]);
+    setAlternativeRoutes(alternatives);
+    setSelectedRouteId(allRoutes[0].id);
+    setTrafficIncidents(incidents);
+    setShowBottomSheet(true);
+  } catch (error) {
+    Alert.alert("Route Error", error.message);
+  } finally {
+    setIsLoading(false);
+  }
+}, [currentLocation, destination, selectedMotor]);
+
+
 
   const startNavigation = useCallback(() => {
     if (!selectedRoute) return;
@@ -423,7 +450,7 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
 
   const saveTripSummaryToBackend = async (summary: TripSummary) => {
     try {
-      await fetch(`${LOCALHOST_IP}/api/gas-sessions`, {
+      await fetch(`${LOCALHOST_IP}/api/trips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summary),
@@ -486,16 +513,19 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
             </View>
             
             <SearchBar
-              searchRef={searchRef}
-              searchText={searchText}
-              setSearchText={setSearchText}
-              isTyping={isTyping}
-              setIsTyping={setIsTyping}
-              setDestination={setDestination}
-              animateToRegion={animateToRegion}
-              saveToRecent={saveToRecent}
-              recentLocations={recentLocations}
-              savedLocations={savedLocations}
+searchRef={searchRef}
+  searchText={searchText}
+  setSearchText={setSearchText}
+  isTyping={isTyping}
+  setIsTyping={setIsTyping}
+  setDestination={setDestination}
+  animateToRegion={animateToRegion}
+  saveToRecent={saveToRecent}
+  recentLocations={recentLocations}
+  savedLocations={savedLocations}
+  selectedMotor={selectedMotor}
+  setSelectedMotor={setSelectedMotor}
+  motorList={motorList}
             />
           </View>
         </Modal>

@@ -5,12 +5,17 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
+
+
+import type { GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
+
 type SearchBarProps = {
-  searchRef: React.RefObject<typeof GooglePlacesAutocomplete>;
+  searchRef: React.RefObject<GooglePlacesAutocompleteRef>;
   searchText: string;
   setSearchText: (value: string) => void;
   isTyping: boolean;
@@ -22,6 +27,10 @@ type SearchBarProps = {
   saveToRecent: (location: any) => void;
   recentLocations: any[];
   savedLocations: any[];
+  selectedMotor: { name: string; fuelEfficiency: number } | null;
+  setSelectedMotor: (motor: { name: string; fuelEfficiency: number } | null) => void;
+  motorList: { name: string; fuelEfficiency: number }[];
+
 };
 
 const SearchBar = ({
@@ -35,30 +44,13 @@ const SearchBar = ({
   saveToRecent,
   recentLocations,
   savedLocations,
+  motorList,
+  selectedMotor,
+  setSelectedMotor,
+
 }: SearchBarProps) => {
   const [activeTab, setActiveTab] = useState("Recent");
-  const [suggestions, setSuggestions] = useState<
-    { address: string; latitude: number; longitude: number }[]
-  >([]);
 
-  useEffect(() => {
-    if (searchText.length > 0) {
-      setSuggestions([
-        {
-          address: `${searchText} Suggestion 1`,
-          latitude: 14.5995,
-          longitude: 120.9842,
-        },
-        {
-          address: `${searchText} Suggestion 2`,
-          latitude: 14.6095,
-          longitude: 120.9942,
-        },
-      ]);
-    } else {
-      setSuggestions([]);
-    }
-  }, [searchText]);
 
   const handlePlaceSelect = (place: {
     address: string;
@@ -75,13 +67,48 @@ const SearchBar = ({
     saveToRecent(place);
   };
 
+
+
   return (
     <View>
+      <View style={{ marginBottom: 10 }}>
+        <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>Motor Used</Text>
+        {motorList.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {motorList.map((motor, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => setSelectedMotor(motor)}
+                style={{
+                  backgroundColor:
+                    selectedMotor?.name === motor.name ? "#3498db" : "#ecf0f1",
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  marginRight: 8,
+                }}
+              >
+                <Text style={{ color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50" }}>
+                  {motor.name} ({motor.fuelEfficiency} km/L)
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <Text style={{ color: "#888" }}>No motors found.</Text>
+        )}
+      </View>
+
       <GooglePlacesAutocomplete
         ref={searchRef}
         placeholder="Where to?"
         fetchDetails
         onPress={(data, details = null) => {
+          if (!selectedMotor) {
+            Alert.alert("Select Motor", "Please select a motor before choosing a destination.");
+            return;
+          }
+
           if (details) {
             const newDestination = {
               latitude: details.geometry.location.lat,
@@ -93,12 +120,12 @@ const SearchBar = ({
             setIsTyping(false);
           }
         }}
-        onFocus={() => setIsTyping(true)}
-        onBlur={() => setIsTyping(false)}
         textInputProps={{
           value: searchText,
           onChangeText: setSearchText,
           placeholderTextColor: "#888",
+          onFocus: () => setIsTyping(true),
+          onBlur: () => setIsTyping(false),
         }}
         query={{ key: GOOGLE_MAPS_API_KEY, language: "en" }}
         styles={{
@@ -121,19 +148,7 @@ const SearchBar = ({
         }}
       />
 
-      {isTyping && suggestions.length > 0 && (
-        <ScrollView style={styles.suggestionsContainer}>
-          {suggestions.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => handlePlaceSelect(item)}
-              style={styles.suggestionItem}
-            >
-              <Text>{item.address}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+
 
       {!isTyping && (
         <>

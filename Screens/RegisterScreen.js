@@ -20,19 +20,19 @@ import { AuthContext } from "../AuthContext/AuthContext";
 import { LOCALHOST_IP } from "@env";
 
 // Sample barangay data for Valenzuela
-const valenzuelaData = {
-  "Arkong Bato": ["Street 1", "Street 2", "Main Road"],
-  "Bagbaguin": ["Bagbaguin St", "Commerce Ave", "Industrial St"],
-  "Bignay": ["Bignay Road", "Poblacion St", "Market St"],
-  "Bisig": ["Bisig Ave", "Unity St", "Community Road"],
-  "Canumay East": ["East Ave", "Sunrise St", "Dawn Road"],
-  "Canumay West": ["West Ave", "Sunset St", "Dusk Road"],
-  "Coloong": ["Coloong St", "Village Road", "Riverside Ave"],
-  "Dalandanan": ["Dalandanan Ave", "Port Road", "Harbor St"],
-  "Paso de Blas": ["Paso St", "Blas Ave", "Heritage Road"],
-  "Poblacion": ["Poblacion Ave", "Town Square", "Central St"],
+const valenzuelaData = 
+  ["Arkong Bato",
+  "Bagbaguin",
+  "Bignay",
+  "Bisig",
+  "Canumay East",
+  "Canumay West",
+  "Coloong",
+  "Dalandanan",
+  "Paso de Blas",
+  "Poblacion"]
   // Add more barangays as needed
-};
+;
 
 const inputTheme = {
   colors: {
@@ -155,7 +155,7 @@ export default function RegisterScreen({ navigation }) {
       if (response.status === 201) {
         Alert.alert(
           "Registration Successful! 🎉",
-          "Please check your email for a verification link to activate your account.",
+          "Please check your email to enter a 6-digit OTP.",
           [
             {
               text: "OK",
@@ -169,7 +169,7 @@ export default function RegisterScreen({ navigation }) {
                 setStreet("");
                 
                 // Navigate to login or a verification waiting screen
-                navigation.navigate("Login");
+                navigation.navigate("VerifyOtp");
               },
             },
           ]
@@ -313,20 +313,21 @@ export default function RegisterScreen({ navigation }) {
             contentContainerStyle={styles.modal}
           >
             <Text style={styles.modalTitle}>Select Barangay</Text>
-            <ScrollView style={styles.modalScroll}>
-              {Object.keys(valenzuelaData).map((b) => (
-                <List.Item
-                  key={b}
-                  title={b}
-                  titleStyle={styles.listItem}
-                  onPress={() => {
-                    setBarangay(b);
-                    setStreet("");
-                    setBarangayModal(false);
-                  }}
-                />
-              ))}
-            </ScrollView>
+<ScrollView style={styles.modalScroll}>
+  {valenzuelaData.map((b) => (
+    <List.Item
+      key={b}
+      title={b}
+      titleStyle={styles.listItem}
+      onPress={() => {
+        setBarangay(b);
+        setStreet("");
+        setBarangayModal(false);
+      }}
+    />
+  ))}
+</ScrollView>
+
           </Modal>
         </Portal>
 

@@ -48,6 +48,9 @@ const ProfileScreen = ({ navigation }) => {
           {user?.name}
         </Text>
         <Text style={tw`text-gray-500`}>{user?.email}</Text>
+        <Text style={tw`text-gray-500`}>{user?.id}</Text>
+        
+
       </View>
 
       {/* Account Section */}

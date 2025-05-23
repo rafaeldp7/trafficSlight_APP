@@ -19,7 +19,8 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import * as Location from "expo-location";
 import DropDownPicker from "react-native-dropdown-picker";
 import { useFocusEffect } from "@react-navigation/native";
-import { LOCALHOST_IP } from "@env";
+
+import { LOCALHOST_IP, GOOGLE_MAPS_API_KEY } from "@env";
 import { useUser } from "../AuthContext/UserContext"; // Assuming you have a custom hook for user context
 
 
@@ -61,7 +62,7 @@ const MyLocationButton = ({
 );
 
 
-const CustomMapViewComponent = React.memo(({ mapRef, region, mapStyle, currentLocation, reportMarkers }: any) => (
+const CustomMapViewComponent = React.memo(({ mapRef, region, mapStyle, currentLocation, reportMarkers, gasStations, showReports, showGasStations }: any) => (
   <MapView
     ref={mapRef}
     style={styles.map}
@@ -83,20 +84,34 @@ const CustomMapViewComponent = React.memo(({ mapRef, region, mapStyle, currentLo
     )}
 
     {/* 🧭 Display all report markers */}
-    {reportMarkers.map((report, index) => (
-      <Marker
-        key={index}
-        coordinate={{
-          latitude: report.location.latitude,
-          longitude: report.location.longitude,
-        }}
-        title={report.reportType}
-        description={`${report.description} - ${new Date(report.timestamp).toLocaleString()}`}
+    {showReports && Array.isArray(reportMarkers) &&
+  reportMarkers.map((report, index) => (
+    <Marker
+      key={`report-${index}`}
+      coordinate={{
+        latitude: report.location.latitude,
+        longitude: report.location.longitude,
+      }}
+      title={report.reportType}
+      description={`${report.description} - ${new Date(report.timestamp).toLocaleString()}`}
+      pinColor="#FFFF00"
+    />
+  ))}
 
+{showGasStations && Array.isArray(gasStations) &&
+  gasStations.map((station, index) => (
+    <Marker
+      key={`gas-${index}`}
+      coordinate={{
+        latitude: station.geometry.location.lat,
+        longitude: station.geometry.location.lng,
+      }}
+      title={station.name}
+      description={station.vicinity}
+      pinColor="#00cc44"
+    />
+  ))}
 
-        pinColor="#FFFF00"
-      />
-    ))}
   </MapView>
 ));
 
@@ -128,6 +143,10 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   const [trafficReportType, setTrafficReportType] = useState("Accident");
   const [open, setOpen] = useState(false);
+  const [gasStations, setGasStations] = useState<any[]>([]);
+const [showGasStations, setShowGasStations] = useState(true);
+const [showReports, setShowReports] = useState(true);
+
   const [items, setItems] = useState([
     { label: "Accident", value: "Accident" },
     { label: "Traffic Jam", value: "Traffic Jam" },
@@ -137,19 +156,50 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
   ]);
   const mapRef = useRef<MapView>(null);
   const [reportMarkers, setReportMarkers] = useState([]);
+
   const [description, setDescription] = useState("");
 
 
+const fetchNearbyGasStations = async () => {
+  if (!currentLocation) return;
 
-  const fetchReports = useCallback(async () => {
-    try {
-      const res = await fetch(`${LOCALHOST_IP}/api/reports`);
-      const data = await res.json();
-      setReportMarkers(data);
-    } catch (error) {
-      console.error("Failed to fetch reports:", error);
+  try {
+    const { latitude, longitude } = currentLocation;
+    const radius = 7000;
+
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=gas_station&key=${GOOGLE_MAPS_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.results) {
+      setGasStations(data.results);
+    } else {
+      console.warn("No gas stations found");
     }
-  }, []);
+  } catch (error) {
+    console.error("Error fetching gas stations:", error);
+  }
+};
+
+
+
+const fetchReports = useCallback(async () => {
+  try {
+    const res = await fetch(`${LOCALHOST_IP}/api/reports`);
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      setReportMarkers(data);
+    } else {
+      console.warn("⚠️ Expected array, got:", data);
+      setReportMarkers([]); // fallback to prevent crash
+    }
+  } catch (error) {
+    console.error("Failed to fetch reports:", error);
+    setReportMarkers([]); // fallback on network error
+  }
+}, []);
+
 
   const getCurrentLocation = useCallback(async () => {
     try {
@@ -216,6 +266,10 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
 
       const text = await response.text();
       let data;
+      if (!description.trim()) {
+        Alert.alert("Description required", "Please enter a short description.");
+        return;
+      }
 
       try {
         data = JSON.parse(text);
@@ -226,8 +280,11 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
 
       if (response.ok) {
         Alert.alert("Traffic Report Submitted", `Type: ${trafficReportType}`);
+        setDescription(""); // ✅ clear input
+        setTrafficReportType("Accident"); // ✅ reset dropdown
         fetchReports(); // refresh markers
-      } else {
+      }
+      else {
         Alert.alert("Error", data.message || "Failed to submit report");
       }
     } catch (error) {
@@ -237,13 +294,25 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
       setIsReportModalVisible(false);
     }
   };
+  {Array.isArray(reportMarkers) && reportMarkers.length === 0 && (
+  <Text style={{ position: 'absolute', top: 80, left: 20, backgroundColor: '#fff', padding: 5, borderRadius: 5 }}>
+    No reports available yet.
+  </Text>
+)}
 
 
 
-  useEffect(() => {
-    getCurrentLocation();
-    fetchReports();
-  }, [getCurrentLocation, fetchReports]);
+useEffect(() => {
+  getCurrentLocation();
+  fetchReports();
+}, [getCurrentLocation, fetchReports]);
+
+useEffect(() => {
+  if (currentLocation) {
+    fetchNearbyGasStations();
+  }
+}, [currentLocation]);
+
 
 
   return (
@@ -313,13 +382,26 @@ const RouteSelectionScreen = ({ navigation }: { navigation: any }) => {
 
         {/* Buttons */}
 
-        <CustomMapViewComponent
-          mapRef={mapRef}
-          region={region}
-          mapStyle={mapStyle}
-          currentLocation={currentLocation}
-          reportMarkers={reportMarkers}
-        />
+<CustomMapViewComponent
+  mapRef={mapRef}
+  region={region}
+  mapStyle={mapStyle}
+  currentLocation={currentLocation}
+  reportMarkers={reportMarkers}
+  gasStations={gasStations}
+  showReports={showReports}
+  showGasStations={showGasStations}
+/>
+
+        <View style={{ position: 'absolute', bottom: 170, right: 20 }}>
+  <TouchableOpacity onPress={() => setShowReports(!showReports)} style={[styles.toggleButton, { backgroundColor: showReports ? '#3498db' : '#ccc' }]}>
+    <Text style={styles.toggleText}>Reports</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => setShowGasStations(!showGasStations)} style={[styles.toggleButton, { backgroundColor: showGasStations ? '#2ecc71' : '#ccc', marginTop: 10 }]}>
+    <Text style={styles.toggleText}>Gas</Text>
+  </TouchableOpacity>
+</View>
+
 
         {isLoading && <ActivityIndicator size="large" color="#3498db" style={styles.loadingContainer} />}
 
@@ -403,6 +485,21 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
   },
+  toggleButton: {
+  padding: 10,
+  borderRadius: 10,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.3,
+  shadowRadius: 2,
+  elevation: 3,
+},
+toggleText: {
+  color: '#fff',
+  fontWeight: 'bold',
+},
+
 });
 
 export default React.memo(RouteSelectionScreen);

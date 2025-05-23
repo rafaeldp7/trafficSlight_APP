@@ -81,7 +81,7 @@ export default function VerifyScreen() {
   };
 
   const handleGoToLogin = () => {
-    navigation.navigate("Login");
+    navigation.navigate("LoginScreen");
   };
 
   useEffect(() => {

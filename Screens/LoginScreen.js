@@ -58,95 +58,106 @@ export default function LoginScreen({ navigation }) {
     return true;
   };
 
-  const handleLogin = async () => {
-    if (loading) return;
+const handleLogin = async () => {
+  if (loading) return;
 
-    // Validate inputs
-    const isEmailValid = validateEmail(email);
-    
-    if (!email || !password) {
-      Alert.alert("Missing Information", "Please fill in both email and password");
-      return;
-    }
+  // Validate inputs
+  const isEmailValid = validateEmail(email);
+  
+  if (!email || !password) {
+    Alert.alert("Missing Information", "Please fill in both email and password");
+    return;
+  }
 
-    if (!isEmailValid) {
-      return;
-    }
+  if (!isEmailValid) return;
 
-    setLoading(true);
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+  setLoading(true);
 
-      const res = await fetch(`${LOCALHOST_IP}/api/auth/login`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          password 
-        }),
-        signal: controller.signal,
-      });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      clearTimeout(timeoutId);
-      const data = await res.json();
+    const res = await fetch(`${LOCALHOST_IP}/api/auth/login`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ 
+        email: email.toLowerCase().trim(), 
+        password 
+      }),
+      signal: controller.signal,
+    });
 
-      if (res.ok) {
-        // Save authentication data
-        await login(data.token);
-        if (data.user) {
-          await saveUser(data.user);
-        }
+    clearTimeout(timeoutId);
+    const data = await res.json();
 
-        // Clear form
-        setEmail("");
-        setPassword("");
-        
-        // Show success message and navigate
-        Alert.alert(
-          "Welcome back! 👋",
-          `Hello ${data.user?.name || 'there'}!`,
-          [
-            {
-              text: "Continue",
-              onPress: () => navigation.replace("Main")
-            }
-          ]
-        );
-      } else {
-        // Clear password on failed login
-        setPassword("");
-        
-        // Handle specific error cases
-        let errorMessage = "Login failed. Please try again.";
-        if (data.msg) {
-          if (data.msg.includes("not verified")) {
-            errorMessage = "Please verify your email before logging in. Check your inbox for a verification link.";
-          } else if (data.msg.includes("Invalid") || data.msg.includes("password")) {
-            errorMessage = "Invalid email or password. Please check your credentials.";
-          } else {
-            errorMessage = data.msg;
-          }
-        }
-        
-        Alert.alert("Login Failed", errorMessage);
+    if (res.ok) {
+      await login(data.token);
+      if (data.user) {
+        await saveUser(data.user);
       }
-    } catch (error) {
-      console.error("Login Error:", error);
-      
-      if (error.name === 'AbortError') {
-        Alert.alert("Connection Timeout", "Request timed out. Please check your internet connection and try again.");
-      } else {
-        Alert.alert("Network Error", "Unable to connect to server. Please check your internet connection and try again.");
+
+      setEmail("");
+      setPassword("");
+
+      Alert.alert(
+        "Welcome back! 👋",
+        `Hello ${data.user?.name || "there"}!`,
+        [
+          {
+            text: "Continue",
+            // onPress: () => navigation.replace("Main"),
+          },
+        ]
+      );
+    } else {
+      setPassword("");
+
+      // Email not verified → redirect to OTP screen
+      if (data?.msg?.toLowerCase().includes("verify your email")) {
+  Alert.alert(
+    "Email Not Verified",
+    "Please verify your email before logging in. Check your inbox for a verification link.",
+    [
+      {
+        text: "Verify Now",
+        onPress: () => navigation.navigate("VerifyOtp", { email }),
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]
+  );
+  return;
+}
+
+
+      // Other error handling
+      let errorMessage = "Login failed. Please try again.";
+      if (data?.msg?.includes("Invalid") || data?.msg?.includes("password")) {
+        errorMessage = "Invalid email or password. Please check your credentials.";
+      } else if (data?.msg) {
+        errorMessage = data.msg;
       }
-    } finally {
-      setLoading(false);
+
+      Alert.alert("Login Failed", errorMessage);
     }
-  };
+  } catch (error) {
+    console.error("Login Error:", error);
+
+    if (error.name === "AbortError") {
+      Alert.alert("Connection Timeout", "Request timed out. Please check your internet connection and try again.");
+    } else {
+      Alert.alert("Network Error", "Unable to connect to server. Please check your internet connection and try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleGoogleLogin = async () => {
     if (!request || googleLoading) return;
@@ -238,7 +249,8 @@ export default function LoginScreen({ navigation }) {
           onPress: () => {
             // Navigate to forgot password screen
             // navigation.navigate("ForgotPassword");
-            Alert.alert("Info", "Forgot password feature coming soon!");
+           navigation.navigate("ForgotPassword");
+
           }
         }
       ]
@@ -325,7 +337,7 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.dividerLine} />
           </View>
 
-          <Button
+          {/* <Button
             mode="outlined"
             onPress={handleGoogleLogin}
             disabled={!request || loading || googleLoading}
@@ -336,7 +348,7 @@ export default function LoginScreen({ navigation }) {
             icon="google"
           >
             {googleLoading ? "Connecting..." : "Continue with Google"}
-          </Button>
+          </Button> */}
 
           <TouchableOpacity 
             onPress={() => navigation.navigate("Register")}
