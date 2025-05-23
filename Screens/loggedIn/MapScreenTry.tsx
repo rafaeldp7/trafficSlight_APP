@@ -32,7 +32,7 @@ type LocationCoords = {
   latitude: number;
   longitude: number;
   address?: string;
-};          
+};
 
 type RouteData = {
   id: string;
@@ -104,13 +104,17 @@ const calcDistance = (loc1: LocationCoords, loc2: LocationCoords): number => {
 const downloadOfflineMap = async (region: any) => {
   const zoomLevel = 12;
   const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
-  
+
   // Create directory if it doesn't exist
   await FileSystem.makeDirectoryAsync(OFFLINE_TILES_PATH, { intermediates: true });
 
   // Simple offline map implementation - in production you'd want a more robust solution
   console.log("Offline map data prepared for region:", region);
 };
+
+// fetch routes
+
+
 
 // ----------------------------------------------------------------
 // Components
@@ -154,13 +158,14 @@ const RouteDetailsBottomSheet = React.memo(({ visible, bestRoute, alternatives, 
             <Text style={styles.summaryTitle}>Recommended Route</Text>
             <Text style={styles.routeStatBig}>
               Fuel: {(bestRoute.fuelEstimate * 0.9).toFixed(2)}-{(bestRoute.fuelEstimate * 1.1).toFixed(2)} L
+              {calculateFuelRange(bestRoute.distance, bestRoute.fuelEstimate).min.toFixed(2)}-{calculateFuelRange(bestRoute.distance, bestRoute.fuelEstimate).max.toFixed(2)} L
             </Text>
             <Text style={styles.routeStat}>Distance: {(bestRoute.distance / 1000).toFixed(2)} km</Text>
             <Text style={styles.routeStat}>ETA: {formatETA(bestRoute.duration)}</Text>
             <Text style={styles.routeStat}>Traffic: {bestRoute.trafficRate}/5</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.sortOptionsContainer}>
           <Text style={styles.sectionTitle}>Sort Alternatives By:</Text>
           {["fuel", "traffic", "distance"].map((criteria) => (
@@ -173,7 +178,7 @@ const RouteDetailsBottomSheet = React.memo(({ visible, bestRoute, alternatives, 
             </TouchableOpacity>
           ))}
         </View>
-        
+
         <View style={styles.alternativesContainer}>
           <Text style={styles.sectionTitle}>Alternative Routes</Text>
           {sortedAlternatives.map((routeItem) => (
@@ -199,11 +204,19 @@ const RouteDetailsBottomSheet = React.memo(({ visible, bestRoute, alternatives, 
 const TrafficIncidentMarker = ({ incident }: { incident: TrafficIncident }) => (
   <Marker coordinate={incident.location}>
     <View style={styles.incidentMarker}>
-      <MaterialIcons 
-        name={incident.severity === "high" ? "warning" : "info"} 
-        size={24} 
-        color={incident.severity === "high" ? "#e74c3c" : "#f39c12"} 
+      <MaterialIcons
+        name={
+          incident.type === "Accident" ? "warning" :
+            incident.type === "Hazard" ? "report-problem" :
+              incident.type === "Road Closure" ? "block" :
+                incident.type === "Traffic Jam" ? "traffic" :
+                  incident.type === "Police" ? "local-police" :
+                    "info"
+        }
+        size={24}
+        color={incident.severity === "high" ? "#e74c3c" : "#f39c12"}
       />
+
     </View>
   </Marker>
 );
@@ -264,12 +277,12 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
   // Location tracking
   useEffect(() => {
     let sub: Location.LocationSubscription;
-    
+
     const getLocation = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") throw new Error("Permission denied");
-        
+
         const loc = await Location.getCurrentPositionAsync({});
         const initReg = {
           latitude: loc.coords.latitude,
@@ -292,14 +305,14 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
               longitude: update.coords.longitude,
             };
             setCurrentLocation(newLocation);
-            
+
             if (isFollowingUser || isNavigating) {
               animateToRegion({
                 ...newLocation,
                 latitudeDelta: 0.005,
                 longitudeDelta: 0.005,
               });
-            
+
             }
           }
         );
@@ -336,87 +349,110 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
     mapRef.current?.animateToRegion(newRegion, 1000);
   }, []);
 
-  const saveToRecent = useCallback((loc: LocationCoords) => {
-    setRecentLocations((prev) => [loc, ...prev].slice(0, MAX_RECENT_LOCATIONS));
-  }, []);
+  // const saveToRecent = useCallback((loc: LocationCoords) => {
+  //   setRecentLocations((prev) => [loc, ...prev].slice(0, MAX_RECENT_LOCATIONS));
+  // }, []);
 
-  const saveLocation = useCallback((loc: LocationCoords) => {
-    setSavedLocations((prev) => [...prev, loc]);
-  }, []);
+  // const saveLocation = useCallback((loc: LocationCoords) => {
+  //   setSavedLocations((prev) => [...prev, loc]);
+  // }, []);
 
-const fetchRoutes = useCallback(async () => {
-  if (!currentLocation || !destination) return;
-  setIsLoading(true);
-  
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
-    );
-    const data = await res.json();
-    if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
-    if (data.routes.length === 0) throw new Error("No routes found");
+  const fetchRoutes = useCallback(async () => {
+    if (!currentLocation || !destination) return;
+    setIsLoading(true);
 
-    const processRoute = (r: any, i: number) => {
-      const leg = r.legs[0];
-      return {
-        id: `route-${i}`,
-        distance: leg.distance.value,
-        duration: leg.duration.value,
-        fuelEstimate: selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0,
-        trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
-        coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
-          latitude: lat,
-          longitude: lng,
-        })),
-        instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
+    console.log("Fetching routes..." + currentLocation, destination);
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await res.json();
+      if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
+      
+      console.log("Route data:", data);
+      if (data.routes.length === 0) throw new Error("No routes found");
+      
+      const processRoute = (r: any, i: number) => {
+        const leg = r.legs[0];
+        return {
+          id: `route-${i}`,
+          distance: leg.distance.value,
+          duration: leg.duration.value,
+          fuelEstimate: selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0,
+          trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
+          coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
+            latitude: lat,
+            longitude: lng,
+          })),
+          instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
+        };
       };
-    };
 
-    const allRoutes = data.routes.map(processRoute);
-    if (allRoutes.length < 2) Alert.alert("No alternatives found");
+      const allRoutes = data.routes.map(processRoute);
+      if (allRoutes.length < 2) Alert.alert("No alternatives found");
 
-    const alternatives = allRoutes.slice(1);
-    while (alternatives.length < 3) {
-      const last = alternatives[alternatives.length - 1];
-      alternatives.push({
-        ...last,
-        id: `route-${alternatives.length + 1}`,
-        distance: last.distance * 1.1,
-        duration: last.duration * 1.1,
-        fuelEstimate: last.fuelEstimate * 1.1,
-      });
+      const alternatives = allRoutes.slice(1);
+      while (alternatives.length < 3) {
+        const last = alternatives[alternatives.length - 1];
+        alternatives.push({
+          ...last,
+          id: `route-${alternatives.length + 1}`,
+          distance: last.distance * 1.1,
+          duration: last.duration * 1.1,
+          fuelEstimate: last.fuelEstimate * 1.1,
+        });
+      }
+
+      // const incidents: TrafficIncident[] = [
+      //   {
+      //     id: "1",
+      //     location: {
+      //       latitude: (currentLocation.latitude + destination.latitude) / 2,
+      //       longitude: (currentLocation.longitude + destination.longitude) / 2,
+      //     },
+      //     type: "accident",
+      //     severity: "high",
+      //     description: "Accident reported ahead",
+      //   },
+      // ];
+
+      const fetchTrafficReports = async () => {
+        try {
+          const res = await fetch("https://ts-backend-1-jyit.onrender.com/api/reports");
+          const data = await res.json();
+          const formatted: TrafficIncident[] = data.map((r: any) => ({
+            id: r._id,
+            location: r.location,
+            type: r.reportType,
+            severity: r.reportType.toLowerCase().includes("accident") ? "high" : "medium",
+            description: r.description,
+          }));
+          setTrafficIncidents(formatted);
+        } catch (err) {
+          console.error("Failed to load traffic reports", err);
+        }
+      };
+
+
+      setTripSummary(allRoutes[0]);
+      setAlternativeRoutes(alternatives);
+      setSelectedRouteId(allRoutes[0].id);
+
+      setShowBottomSheet(true);
+      await fetchTrafficReports();
+
+    } catch (error) {
+      Alert.alert("Route Error", error.message);
+    } finally {
+      setIsLoading(false);
     }
-
-    const incidents: TrafficIncident[] = [
-      {
-        id: "1",
-        location: {
-          latitude: (currentLocation.latitude + destination.latitude) / 2,
-          longitude: (currentLocation.longitude + destination.longitude) / 2,
-        },
-        type: "accident",
-        severity: "high",
-        description: "Accident reported ahead",
-      },
-    ];
-
-    setTripSummary(allRoutes[0]);
-    setAlternativeRoutes(alternatives);
-    setSelectedRouteId(allRoutes[0].id);
-    setTrafficIncidents(incidents);
-    setShowBottomSheet(true);
-  } catch (error) {
-    Alert.alert("Route Error", error.message);
-  } finally {
-    setIsLoading(false);
-  }
-}, [currentLocation, destination, selectedMotor]);
+  }, [currentLocation, destination, selectedMotor]);
 
 
 
   const startNavigation = useCallback(() => {
     if (!selectedRoute) return;
-    
+
     setIsNavigating(true);
     setIsFollowingUser(true);
 
@@ -432,8 +468,8 @@ const fetchRoutes = useCallback(async () => {
   const endNavigation = useCallback((arrived: boolean = false) => {
     setIsNavigating(false);
     setIsFollowingUser(false);
- 
-    
+
+
     if (arrived && user && destination && selectedRoute) {
       setTripSummaryModalVisible(true);
       saveTripSummaryToBackend({
@@ -511,21 +547,23 @@ const fetchRoutes = useCallback(async () => {
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Search Destination</Text>
             </View>
-            
+
             <SearchBar
-searchRef={searchRef}
-  searchText={searchText}
-  setSearchText={setSearchText}
-  isTyping={isTyping}
-  setIsTyping={setIsTyping}
-  setDestination={setDestination}
-  animateToRegion={animateToRegion}
-  saveToRecent={saveToRecent}
-  recentLocations={recentLocations}
-  savedLocations={savedLocations}
-  selectedMotor={selectedMotor}
-  setSelectedMotor={setSelectedMotor}
-  motorList={motorList}
+              // onPress={() => setModalVisible(false)}
+              searchRef={searchRef}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              isTyping={isTyping}
+              setIsTyping={setIsTyping}
+              setDestination={setDestination}
+              animateToRegion={animateToRegion}
+              // saveToRecent={saveToRecent}
+              recentLocations={recentLocations}
+              savedLocations={savedLocations}
+              selectedMotor={selectedMotor}
+              setSelectedMotor={setSelectedMotor}
+              motorList={motorList}
+              onPlaceSelectedCloseModal={() => setModalVisible(false)}
             />
           </View>
         </Modal>
@@ -618,6 +656,9 @@ searchRef={searchRef}
 
               <View style={styles.navigationInfo}>
                 <Text style={styles.navigationText}>
+                  Fuel to Consume: {selectedRoute ? `${(selectedRoute.fuelEstimate).toFixed(3)} L` : 'Calculating...'}
+                </Text>
+                <Text style={styles.navigationText}>
                   Distance: {selectedRoute ? `${(selectedRoute.distance / 1000).toFixed(1)} km` : 'Calculating...'}
                 </Text>
                 <Text style={styles.navigationText}>
@@ -656,24 +697,24 @@ searchRef={searchRef}
           <View style={styles.summaryModalContainer}>
             <View style={styles.summaryModal}>
               <Text style={styles.summaryTitle}>Trip Completed</Text>
-              
+
               {selectedRoute && destination && (
                 <>
                   <View style={styles.summaryRow}>
                     <MaterialIcons name="place" size={20} color="#e74c3c" />
                     <Text style={styles.summaryText} numberOfLines={2}>{destination.address}</Text>
                   </View>
-                  
+
                   <View style={styles.summaryRow}>
                     <MaterialIcons name="directions-car" size={20} color="#3498db" />
                     <Text style={styles.summaryText}>{(selectedRoute.distance / 1000).toFixed(2)} km</Text>
                   </View>
-                  
+
                   <View style={styles.summaryRow}>
                     <MaterialIcons name="local-gas-station" size={20} color="#2ecc71" />
                     <Text style={styles.summaryText}>{selectedRoute.fuelEstimate.toFixed(2)} L</Text>
                   </View>
-                  
+
                   <View style={styles.summaryRow}>
                     <MaterialIcons name="schedule" size={20} color="#9b59b6" />
                     <Text style={styles.summaryText}>{formatETA(selectedRoute.duration)}</Text>
@@ -681,11 +722,11 @@ searchRef={searchRef}
                 </>
               )}
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => {
                   setTripSummaryModalVisible(false);
                   navigation.goBack();
-                }} 
+                }}
                 style={styles.closeSummaryButton}
               >
                 <Text style={styles.closeSummaryText}>Done</Text>
@@ -904,7 +945,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     padding: 16,
     paddingBottom: 32,
-    maxHeight: '50%',
+    maxHeight: '40%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

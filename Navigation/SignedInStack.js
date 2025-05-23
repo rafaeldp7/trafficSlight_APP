@@ -23,7 +23,7 @@ import FuelLogDetailsScreen from "../Screens/loggedIn/FuelLogDetailsScreen.tsx";
 import FuelCalculatorScreen from "../Screens/loggedIn/FuelCalculatorScreen";
 import AddFuelLogScreen from "../Screens/loggedIn/addFuelLogsScreen";
 import addSavedDestinationScreen from "../Screens/loggedIn/addSavedDestinationScreen";
-
+import AllDestinationsMapScreen from "../Screens/loggedIn/allSavedDestination";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -84,6 +84,9 @@ export default function SignedInStack() {
 
   <Stack.Screen name="addFuelLogScreen" component={AddFuelLogScreen} />
   <Stack.Screen name="addSavedDestinationScreen" component={addSavedDestinationScreen} />
+  <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
+  {/* 👆 Add these for Home navigation */}
+
 </Stack.Navigator>
 
   );

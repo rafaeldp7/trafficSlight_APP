@@ -30,6 +30,7 @@ type SearchBarProps = {
   selectedMotor: { name: string; fuelEfficiency: number } | null;
   setSelectedMotor: (motor: { name: string; fuelEfficiency: number } | null) => void;
   motorList: { name: string; fuelEfficiency: number }[];
+  onPlaceSelectedCloseModal: () => void;
 
 };
 
@@ -41,12 +42,13 @@ const SearchBar = ({
   setIsTyping,
   setDestination,
   animateToRegion,
-  saveToRecent,
+  // saveToRecent,
   recentLocations,
   savedLocations,
   motorList,
   selectedMotor,
   setSelectedMotor,
+  onPlaceSelectedCloseModal,
 
 }: SearchBarProps) => {
   const [activeTab, setActiveTab] = useState("Recent");
@@ -64,7 +66,8 @@ const SearchBar = ({
       latitudeDelta: 0.001,
       longitudeDelta: 0.001,
     });
-    saveToRecent(place);
+    onPlaceSelectedCloseModal();
+    // saveToRecent(place);
   };
 
 

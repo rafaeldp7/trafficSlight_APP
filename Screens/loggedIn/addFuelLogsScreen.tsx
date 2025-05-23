@@ -24,6 +24,7 @@ export default function AddFuelLogScreen() {
   const [selectedMotor, setSelectedMotor] = useState(null);
   const [liters, setLiters] = useState("");
   const [pricePerLiter, setPricePerLiter] = useState("");
+  const [totalCost, setTotalCost] = useState("");
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
@@ -35,6 +36,24 @@ export default function AddFuelLogScreen() {
       fetchMotors();
     }
   }, [user]);
+
+  useEffect(() => {
+    autoComputeFields();
+  }, [liters, pricePerLiter, totalCost]);
+
+  const autoComputeFields = () => {
+    const l = parseFloat(liters);
+    const p = parseFloat(pricePerLiter);
+    const t = parseFloat(totalCost);
+
+    if (!isNaN(l) && !isNaN(p) && isNaN(t)) {
+      setTotalCost((l * p).toFixed(2));
+    } else if (!isNaN(l) && !isNaN(t) && isNaN(p)) {
+      setPricePerLiter((t / l).toFixed(2));
+    } else if (!isNaN(p) && !isNaN(t) && isNaN(l)) {
+      setLiters((t / p).toFixed(2));
+    }
+  };
 
   const fetchMotors = async () => {
     try {
@@ -71,8 +90,8 @@ export default function AddFuelLogScreen() {
   };
 
   const handleSubmit = () => {
-    if (!selectedMotor || !liters || !pricePerLiter) {
-      return Alert.alert("Missing Fields", "Please complete all fields.");
+    if (!selectedMotor || !liters || !pricePerLiter || !totalCost) {
+      return Alert.alert("Missing Fields", "Please complete at least two values to compute the third.");
     }
     setShowModal(true);
   };
@@ -97,7 +116,7 @@ export default function AddFuelLogScreen() {
       <TextInput
         keyboardType="numeric"
         value={liters}
-        onChangeText={setLiters}
+        onChangeText={(text) => setLiters(text)}
         style={styles.input}
         placeholder="e.g., 4.5"
       />
@@ -106,9 +125,18 @@ export default function AddFuelLogScreen() {
       <TextInput
         keyboardType="numeric"
         value={pricePerLiter}
-        onChangeText={setPricePerLiter}
+        onChangeText={(text) => setPricePerLiter(text)}
         style={styles.input}
         placeholder="e.g., 65.00"
+      />
+
+      <Text style={styles.label}>Total Amount Paid</Text>
+      <TextInput
+        keyboardType="numeric"
+        value={totalCost}
+        onChangeText={(text) => setTotalCost(text)}
+        style={styles.input}
+        placeholder="e.g., 250"
       />
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
@@ -121,7 +149,7 @@ export default function AddFuelLogScreen() {
             <Text style={styles.modalTitle}>Confirm Fuel Log</Text>
             <Text style={styles.modalText}>Liters: {liters}</Text>
             <Text style={styles.modalText}>Price per Liter: ₱{pricePerLiter}</Text>
-            <Text style={styles.modalText}>Total: ₱{(parseFloat(liters) * parseFloat(pricePerLiter)).toFixed(2)}</Text>
+            <Text style={styles.modalText}>Total: ₱{totalCost}</Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>

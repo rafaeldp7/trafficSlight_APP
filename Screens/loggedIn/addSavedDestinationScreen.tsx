@@ -21,7 +21,8 @@ import { useUser } from "../../AuthContext/UserContext";
 import { LOCALHOST_IP, GOOGLE_MAPS_API_KEY } from "@env";
 
 const screen = Dimensions.get("window");
-const API_URL = `http://${LOCALHOST_IP}:5000/api/saved-destinations`;
+const API_URL = `${LOCALHOST_IP}/api/saved-destinations`;
+
 const GOOGLE_API_KEY = GOOGLE_MAPS_API_KEY;
 
 export default function AddSavedDestinationScreen() {
@@ -43,11 +44,11 @@ export default function AddSavedDestinationScreen() {
 
   const fetchDestinations = async () => {
     try {
-      const res = await axios.get(`${API_URL}/${user.id}`);
+      const res = await axios.get(`${API_URL}/${user._id}`);
       setDestinations(res.data);
     } catch {
       Alert.alert("Error", "Failed to fetch destinations");
-    }
+    } 
   };
 
   const saveToHistory = async (entry) => {
@@ -70,6 +71,7 @@ export default function AddSavedDestinationScreen() {
 
   const reverseGeocode = async (lat, lng) => {
     try {
+      console.log(GOOGLE_API_KEY);
       const res = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_API_KEY}`
       );
@@ -137,7 +139,7 @@ export default function AddSavedDestinationScreen() {
       <View style={tw`flex-row justify-between items-center px-4 pt-5 pb-3 bg-white shadow`}>
         <Text style={tw`text-2xl font-bold text-gray-800`}>📍 Saved Destinations</Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate("AllDestinationsMap")}
+          onPress={() => navigation.navigate('AllDestinationsMapScreen')}
           style={tw`p-2 bg-blue-100 rounded-full`}
         >
           <Ionicons name="map" size={22} color="#2563eb" />
@@ -146,23 +148,32 @@ export default function AddSavedDestinationScreen() {
 
       <View style={tw`mx-4 mt-4`}>
         <Text style={tw`text-base font-semibold mb-2 text-gray-800`}>Search New Address</Text>
-        <GooglePlacesAutocomplete
-          placeholder="Type address here..."
-          fetchDetails
-          onPress={(data, details = null) => {
-            const loc = details.geometry.location;
-            const fullAddress = data.description;
-            setAddress(fullAddress);
-            setMarkerCoord({ latitude: loc.lat, longitude: loc.lng });
-            reverseGeocode(loc.lat, loc.lng);
-            setShowMapModal(true);
-          }}
-          query={{ key: GOOGLE_API_KEY, language: "en" }}
-          styles={{
-            textInput: tw`border border-gray-300 p-3 rounded-lg bg-white shadow-sm`,
-            listView: { backgroundColor: "white" },
-          }}
-        />
+<GooglePlacesAutocomplete
+  placeholder="Type address here..."
+  minLength={2}
+  fetchDetails
+  debounce={200}
+  enablePoweredByContainer={false}
+  onPress={(data, details = null) => {
+    const loc = details.geometry.location;
+    const fullAddress = data.description;
+    setAddress(fullAddress);
+    setMarkerCoord({ latitude: loc.lat, longitude: loc.lng });
+    reverseGeocode(loc.lat, loc.lng);
+    setShowMapModal(true);
+  }}
+  query={{
+    key: GOOGLE_API_KEY,
+    language: "en",
+    components: "country:ph", // Optional: restrict to Philippines
+  }}
+  styles={{
+    textInput: tw`border border-gray-300 p-3 rounded-lg bg-white shadow-sm`,
+    listView: { backgroundColor: "white" },
+  }}
+  nearbyPlacesAPI="GooglePlacesSearch"
+/>
+
         {searchHistory.length > 0 && (
           <View style={tw`mt-3`}>
             <Text style={tw`text-sm text-gray-500 mb-2`}>Recent:</Text>
@@ -177,65 +188,7 @@ export default function AddSavedDestinationScreen() {
         )}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={tw`px-4 mt-5`}>
-        {["All", "Home", "Work", "School", "Other"].map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            onPress={() => setActiveCategoryFilter(cat)}
-            style={tw`px-4 py-2 mr-3 rounded-full ${activeCategoryFilter === cat ? "bg-blue-600" : "bg-gray-200"}`}
-          >
-            <Text style={tw`${activeCategoryFilter === cat ? "text-white font-semibold" : "text-gray-800"}`}>
-              {getCategoryIcon(cat)} {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
-      <FlatList
-        data={activeCategoryFilter === "All" ? destinations : destinations.filter((d) => d.category === activeCategoryFilter)}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={tw`p-4`}
-        renderItem={({ item }) => (
-          <View style={tw`p-4 bg-white rounded-xl mb-3 shadow-sm flex-row justify-between items-start`}>
-            <View style={tw`w-3/4`}>
-              <Text style={tw`text-base font-bold text-gray-800`}>
-                {getCategoryIcon(item.category)} {item.label.length > 40 ? item.label.slice(0, 40) + "..." : item.label}
-              </Text>
-              <Text style={tw`text-sm text-gray-500 mt-1`}>
-                {item.location.latitude.toFixed(4)}, {item.location.longitude.toFixed(4)}
-              </Text>
-            </View>
-            <View style={tw`flex-row items-center gap-3`}>
-              <TouchableOpacity onPress={() => {
-                setAddress(item.label);
-                setMarkerCoord(item.location);
-                setCategory(item.category);
-                setEditing(item);
-                reverseGeocode(item.location.latitude, item.location.longitude);
-                setShowMapModal(true);
-              }}>
-                <Ionicons name="create" size={22} color="#2563eb" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteDestination(item._id)}>
-                <Ionicons name="trash" size={22} color="red" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => {
-                setFavoriteDestinations((prev) =>
-                  prev.includes(item._id)
-                    ? prev.filter((id) => id !== item._id)
-                    : [...prev, item._id]
-                );
-              }}>
-                <Ionicons
-                  name={favoriteDestinations.includes(item._id) ? "star" : "star-outline"}
-                  size={22}
-                  color={favoriteDestinations.includes(item._id) ? "gold" : "gray"}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
 
       <Modal visible={showMapModal} animationType="slide">
         <View style={tw`flex-1`}>
@@ -265,19 +218,23 @@ export default function AddSavedDestinationScreen() {
             <Text style={tw`font-bold mb-3`}>{shortAddress}</Text>
             <View style={tw`mb-4`}>
               <Text style={tw`mb-1 font-semibold`}>Category</Text>
-              <View style={tw`flex-row gap-2 flex-wrap`}>
-                {["Home", "Work", "School", "Other"].map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    onPress={() => setCategory(cat)}
-                    style={tw`px-3 py-2 rounded-lg ${category === cat ? "bg-blue-600" : "bg-gray-200"}`}
-                  >
-                    <Text style={tw`${category === cat ? "text-white font-bold" : "text-gray-700"}`}>
-                      {getCategoryIcon(cat)} {cat}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+<View style={tw`mb-4`}>
+  <Text style={tw`mb-1 font-semibold`}>Category</Text>
+  <View style={tw`flex-row gap-2 flex-wrap`}>
+    {["Home", "Work", "School", "Other"].map((cat) => (
+      <TouchableOpacity
+        key={cat}
+        onPress={() => setCategory(cat)}
+        style={tw`px-3 py-2 rounded-lg ${category === cat ? "bg-blue-600" : "bg-gray-200"}`}
+      >
+        <Text style={tw`${category === cat ? "text-white font-bold" : "text-gray-700"}`}>
+          {getCategoryIcon(cat)} {cat}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+</View>
+
             </View>
             <TouchableOpacity onPress={() => { saveDestination(); setShowMapModal(false); }} style={tw`bg-green-600 p-3 rounded-lg mb-2`}>
               <Text style={tw`text-white text-center font-bold`}>Confirm & Save</Text>
