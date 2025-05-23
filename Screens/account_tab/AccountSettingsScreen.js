@@ -34,7 +34,8 @@ export default function AccountSettingsScreen({ navigation }) {
         <Text style={tw`text-gray-600 text-sm mb-3`}>Manage your account settings</Text>
 
         {/* Change Email */}
-        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}>
+        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}
+        onPress={() => navigation.navigate("ChangeEmail")}>
           <View style={tw`flex-row items-center`}>
             <Ionicons name="mail-outline" size={22} color="#000" />
             <Text style={tw`ml-3 text-base`}>Change Email</Text>
@@ -43,7 +44,8 @@ export default function AccountSettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Change Password */}
-        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}>
+        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}
+        onPress={() => navigation.navigate("ChangePassword")}>
           <View style={tw`flex-row items-center`}>
             <Ionicons name="lock-closed-outline" size={22} color="#000" />
             <Text style={tw`ml-3 text-base`}>Change Password</Text>
@@ -52,22 +54,24 @@ export default function AccountSettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Privacy Settings */}
-        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}>
+        {/* <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}
+        onPress={() => navigation.navigate("PrivacySettings")}>
           <View style={tw`flex-row items-center`}>
             <Ionicons name="shield-checkmark-outline" size={22} color="#000" />
-            <Text style={tw`ml-3 text-base`}>Privacy Settings</Text>
+            <Text style={tw`ml-3 text-base`}>Privacy Policy</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="gray" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Notifications */}
-        <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}>
+        {/* <TouchableOpacity style={tw`flex-row items-center justify-between p-4 border-b border-gray-200`}
+        onPress={() => navigation.navigate("NotificationSettings")}>
           <View style={tw`flex-row items-center`}>
             <Ionicons name="notifications-outline" size={22} color="#000" />
             <Text style={tw`ml-3 text-base`}>Notifications</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="gray" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Logout */}
         <TouchableOpacity style={tw`mt-5 bg-red-500 p-4 rounded-lg flex-row items-center justify-center`} onPress={handleLogout}>

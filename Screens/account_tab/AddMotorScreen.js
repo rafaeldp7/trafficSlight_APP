@@ -67,7 +67,7 @@ export default function AddMotorScreen({ navigation }) {
     if (!user?._id) return;
     setLoading(true);
     try {
-      const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user-motors/${user._id}`);
+      const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user/${user._id}`);
       const data = await res.json();
       setMotorList(data);
     } catch {
@@ -104,8 +104,8 @@ export default function AddMotorScreen({ navigation }) {
     try {
       const motorcycleId = motorIdMap[motorForm.selectedMotor];
       const endpoint = motorForm.editingId
-        ? `${LOCALHOST_IP}/api/user-motors/user-motors/${motorForm.editingId}`
-        : `${LOCALHOST_IP}/api/user-motors/user-motors/`;
+        ? `${LOCALHOST_IP}/api/user-motors/user/${motorForm.editingId}`
+        : `${LOCALHOST_IP}/api/user-motors/`;
       const method = motorForm.editingId ? "PUT" : "POST";
       const res = await fetch(endpoint, {
         method,
@@ -145,7 +145,7 @@ export default function AddMotorScreen({ navigation }) {
         style: "destructive",
         onPress: async () => {
           try {
-            const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user-motors/${id}`, { method: "DELETE" });
+            const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user/${id}`, { method: "DELETE" });
             if (!res.ok) throw new Error();
             fetchUserMotors();
             Alert.alert("Deleted", "Motor removed.");

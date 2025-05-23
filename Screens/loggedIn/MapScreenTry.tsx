@@ -25,6 +25,22 @@ import { useUser } from "../../AuthContext/UserContext";
 
 import SearchBar from "../_notImportant/SearchBar";
 import "react-native-get-random-values";
+
+
+
+const reverseGeocodeLocation = async (lat, lng) => {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await res.json();
+    return data.results[0]?.formatted_address || "Unknown";
+  } catch (err) {
+    console.error("Reverse geocoding failed", err);
+    return "Unknown";
+  }
+};
+
 // ----------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------
@@ -126,80 +142,147 @@ type RouteDetailsBottomSheetProps = {
   onClose: () => void;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
+  selectedMotor: { name: string; fuelEfficiency: number } | null; // ✅ NEW
 };
 
-const RouteDetailsBottomSheet = React.memo(({ visible, bestRoute, alternatives, onClose, selectedRouteId, onSelectRoute }: RouteDetailsBottomSheetProps) => {
-  const [sortCriteria, setSortCriteria] = useState<"fuel" | "traffic" | "distance">("distance");
+const getTrafficLabel = (rate: number): string => {
+  switch (rate) {
+    case 1:
+      return "Very Light";
+    case 2:
+      return "Light";
+    case 3:
+      return "Moderate";
+    case 4:
+      return "Heavy";
+    case 5:
+      return "Very Heavy";
+    default:
+      return "Unknown";
+  }
+};
 
-  const sortedAlternatives = useMemo(() => {
-    return [...alternatives].sort((a, b) => {
-      if (sortCriteria === "fuel") return a.fuelEstimate - b.fuelEstimate;
-      if (sortCriteria === "traffic") return a.trafficRate - b.trafficRate;
-      return a.distance - b.distance;
-    });
-  }, [sortCriteria, alternatives]);
 
-  if (!visible || !bestRoute) return null;
+const RouteDetailsBottomSheet = React.memo(
+  ({
+    visible,
+    bestRoute,
+    alternatives,
+    onClose,
+    selectedRouteId,
+    onSelectRoute,
+    selectedMotor, // ✅ include motor prop
+  }: RouteDetailsBottomSheetProps) => {
+    const [sortCriteria, setSortCriteria] = useState<"fuel" | "traffic" | "distance">("distance");
 
-  return (
-    <View style={styles.bottomSheetContainer}>
-      <View style={styles.bottomSheetHeader}>
-        <Text style={styles.bottomSheetTitle}>Route Details</Text>
-        <TouchableOpacity onPress={onClose}>
-          <MaterialIcons name="close" size={24} color="black" />
-        </TouchableOpacity>
-      </View>
-      <ScrollView>
-        <View style={styles.summaryContainer}>
-          <TouchableOpacity
-            onPress={() => onSelectRoute(bestRoute.id)}
-            style={[styles.routeItem, bestRoute.id === selectedRouteId && styles.activeRouteItem]}
-          >
-            <Text style={styles.summaryTitle}>Recommended Route</Text>
-            <Text style={styles.routeStatBig}>
-              Fuel: {(bestRoute.fuelEstimate * 0.9).toFixed(2)}-{(bestRoute.fuelEstimate * 1.1).toFixed(2)} L
-              {calculateFuelRange(bestRoute.distance, bestRoute.fuelEstimate).min.toFixed(2)}-{calculateFuelRange(bestRoute.distance, bestRoute.fuelEstimate).max.toFixed(2)} L
-            </Text>
-            <Text style={styles.routeStat}>Distance: {(bestRoute.distance / 1000).toFixed(2)} km</Text>
-            <Text style={styles.routeStat}>ETA: {formatETA(bestRoute.duration)}</Text>
-            <Text style={styles.routeStat}>Traffic: {bestRoute.trafficRate}/5</Text>
+    const sortedAlternatives = useMemo(() => {
+      return [...alternatives].sort((a, b) => {
+        if (sortCriteria === "fuel") return a.fuelEstimate - b.fuelEstimate;
+        if (sortCriteria === "traffic") return a.trafficRate - b.trafficRate;
+        return a.distance - b.distance;
+      });
+    }, [sortCriteria, alternatives]);
+
+    const renderFuelRange = (fuelEstimate: number) => {
+      const min = fuelEstimate * 0.9;
+      const max = fuelEstimate * 1.1;
+      return `${min.toFixed(2)}–${max.toFixed(2)} L`;
+    };
+
+    if (!visible || !bestRoute || !selectedMotor) return null;
+
+
+    return (
+      <View style={styles.bottomSheetContainer}>
+        <View style={styles.bottomSheetHeader}>
+          <Text style={styles.bottomSheetTitle}>Route Details</Text>
+          <TouchableOpacity onPress={onClose}>
+            <MaterialIcons name="close" size={24} color="black" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sortOptionsContainer}>
-          <Text style={styles.sectionTitle}>Sort Alternatives By:</Text>
-          {["fuel", "traffic", "distance"].map((criteria) => (
+        <ScrollView>
+          <View style={styles.summaryContainer}>
             <TouchableOpacity
-              key={criteria}
-              style={[styles.sortButton, sortCriteria === criteria && styles.activeSortButton]}
-              onPress={() => setSortCriteria(criteria as any)}
+              onPress={() => onSelectRoute(bestRoute.id)}
+              style={[
+                styles.routeItem,
+                bestRoute.id === selectedRouteId && styles.activeRouteItem,
+              ]}
             >
-              <Text style={styles.sortButtonText}>{criteria.toUpperCase()}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.alternativesContainer}>
-          <Text style={styles.sectionTitle}>Alternative Routes</Text>
-          {sortedAlternatives.map((routeItem) => (
-            <TouchableOpacity
-              key={routeItem.id}
-              onPress={() => onSelectRoute(routeItem.id)}
-              style={[styles.routeItem, routeItem.id === selectedRouteId && styles.activeRouteItem]}
-            >
+              <Text style={styles.summaryTitle}>Recommended Route</Text>
               <Text style={styles.routeStatBig}>
-                Fuel: {(routeItem.fuelEstimate * 0.9).toFixed(2)}-{(routeItem.fuelEstimate * 1.1).toFixed(2)} L
+                ⛽ Fuel: {renderFuelRange(bestRoute.fuelEstimate)}
               </Text>
-              <Text style={styles.routeStat}>Distance: {(routeItem.distance / 1000).toFixed(2)} km</Text>
-              <Text style={styles.routeStat}>ETA: {(routeItem.duration / 60).toFixed(0)} min</Text>
-              <Text style={styles.routeStat}>Traffic: {routeItem.trafficRate}/5</Text>
+              <Text style={styles.routeStat}>
+                🛵 Motor Used: <Text style={{ fontWeight: 'bold' }}>{selectedMotor.name}</Text>
+              </Text>
+              <Text style={styles.routeStat}>
+                🔧 Fuel Efficiency: <Text style={{ fontWeight: 'bold' }}>{selectedMotor.fuelEfficiency} km/L</Text>
+              </Text>
+
+
+              <Text style={styles.routeStat}>
+                📏 Distance: {(bestRoute.distance / 1000).toFixed(2)} km
+              </Text>
+              <Text style={styles.routeStat}>
+                ⏱️ ETA: {formatETA(bestRoute.duration)}
+              </Text>
+              <Text style={styles.routeStat}>
+                🚦 Traffic: {getTrafficLabel(bestRoute.trafficRate)}
+              </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-});
+          </View>
+
+          <View style={styles.sortOptionsContainer}>
+            <Text style={styles.sectionTitle}>Sort Alternatives By:</Text>
+            {["fuel", "traffic", "distance"].map((criteria) => (
+              <TouchableOpacity
+                key={criteria}
+                style={[
+                  styles.sortButton,
+                  sortCriteria === criteria && styles.activeSortButton,
+                ]}
+                onPress={() => setSortCriteria(criteria as any)}
+              >
+                <Text style={styles.sortButtonText}>{criteria.toUpperCase()}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.alternativesContainer}>
+            <Text style={styles.sectionTitle}>Alternative Routes</Text>
+            {sortedAlternatives.map((routeItem) => (
+              <TouchableOpacity
+                key={routeItem.id}
+                onPress={() => onSelectRoute(routeItem.id)}
+                style={[
+                  styles.routeItem,
+                  routeItem.id === selectedRouteId && styles.activeRouteItem,
+                ]}
+              >
+                <Text style={styles.routeStatBig}>
+                  ⛽ Fuel: {renderFuelRange(routeItem.fuelEstimate)}
+                </Text>
+                <Text style={styles.routeStat}>
+                  📏 Distance: {(routeItem.distance / 1000).toFixed(2)} km
+                </Text>
+                <Text style={styles.routeStat}>
+                  ⏱️ ETA: {(routeItem.duration / 60).toFixed(0)} min
+                </Text>
+                <Text style={styles.routeStat}>
+                  🚦 Traffic: {getTrafficLabel(bestRoute.trafficRate)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+);
+
+
 
 const TrafficIncidentMarker = ({ incident }: { incident: TrafficIncident }) => (
   <Marker coordinate={incident.location}>
@@ -225,38 +308,57 @@ const TrafficIncidentMarker = ({ incident }: { incident: TrafficIncident }) => (
 // Main Component
 // ----------------------------------------------------------------
 export default function NavigationApp({ navigation }: { navigation: any }) {
+  // Refs
   const mapRef = useRef<MapView>(null);
   const searchRef = useRef<GooglePlacesAutocompleteRef>(null);
   const voiceNavTimeout = useRef<NodeJS.Timeout>();
+
+  // Authenticated user context
   const { user } = useUser();
 
+  // UI and State
   const [searchText, setSearchText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [recentLocations, setRecentLocations] = useState<LocationCoords[]>([]);
-  const [savedLocations, setSavedLocations] = useState<LocationCoords[]>([]);
-  const [destination, setDestination] = useState<LocationCoords | null>(null);
+  const [modalVisible, setModalVisible] = useState(true);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [tripSummaryModalVisible, setTripSummaryModalVisible] = useState(false);
+
+  // Location, region, and navigation state
   const [region, setRegion] = useState<any>(null);
-  const [mapStyle, setMapStyle] = useState<"light" | "dark">("light");
   const [currentLocation, setCurrentLocation] = useState<LocationCoords | null>(null);
+  const [destination, setDestination] = useState<LocationCoords | null>(null);
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [mapStyle, setMapStyle] = useState<"light" | "dark">("light");
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Routing and trip state
   const [tripSummary, setTripSummary] = useState<RouteData | null>(null);
   const [alternativeRoutes, setAlternativeRoutes] = useState<RouteData[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(true);
-  const [showBottomSheet, setShowBottomSheet] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [tripSummaryModalVisible, setTripSummaryModalVisible] = useState(false);
-  const [isFollowingUser, setIsFollowingUser] = useState(false);
-  const [isOffline, setIsOffline] = useState(false);
   const [trafficIncidents, setTrafficIncidents] = useState<TrafficIncident[]>([]);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+
+  // Motor selection state
   const [motorList, setMotorList] = useState<{ name: string; fuelEfficiency: number }[]>([]);
   const [selectedMotor, setSelectedMotor] = useState<{ name: string; fuelEfficiency: number } | null>(null);
 
+  // Selected route (memoized from state)
+  const selectedRoute = useMemo(() => {
+    if (!selectedRouteId) return null;
+    return tripSummary?.id === selectedRouteId
+      ? tripSummary
+      : alternativeRoutes.find((r) => r.id === selectedRouteId) || null;
+  }, [selectedRouteId, tripSummary, alternativeRoutes]);
+
+    // Voice navigation state
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  console.log(user._id);
+  // 📍 Load user-linked motors on mount
   useEffect(() => {
     const fetchMotors = async () => {
       try {
-        const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user-motors/${user._id}`);
+        const res = await fetch(`${LOCALHOST_IP}/api/user-motors/user/${user._id}`);
         const data = await res.json();
         setMotorList(data);
       } catch (error) {
@@ -266,15 +368,7 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
     if (user?._id) fetchMotors();
   }, [user]);
 
-
-
-  const selectedRoute = useMemo(() => {
-    if (!selectedRouteId) return null;
-    if (tripSummary?.id === selectedRouteId) return tripSummary;
-    return alternativeRoutes.find((r) => r.id === selectedRouteId) || null;
-  }, [selectedRouteId, tripSummary, alternativeRoutes]);
-
-  // Location tracking
+  // 📡 Get current location and subscribe to updates
   useEffect(() => {
     let sub: Location.LocationSubscription;
 
@@ -312,7 +406,6 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
                 latitudeDelta: 0.005,
                 longitudeDelta: 0.005,
               });
-
             }
           }
         );
@@ -326,131 +419,104 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
     return () => sub?.remove();
   }, [isFollowingUser, isNavigating]);
 
-  // Navigation effects
+  // 🧭 Detect arrival and handle navigation cleanup
   useEffect(() => {
     if (!isNavigating || !selectedRoute || !currentLocation) return;
 
-
-    // Arrival detection
     const lastCoord = selectedRoute.coordinates[selectedRoute.coordinates.length - 1];
     const distance = calcDistance(currentLocation, lastCoord);
-
-    if (distance < ARRIVAL_THRESHOLD) {
-      endNavigation(true);
-    }
+    if (distance < ARRIVAL_THRESHOLD) endNavigation(true);
 
     return () => {
       if (voiceNavTimeout.current) clearTimeout(voiceNavTimeout.current);
     };
-  }, [isNavigating, currentLocation, selectedRoute, voiceEnabled]);
+  }, [isNavigating, currentLocation, selectedRoute]);
 
-  // Helper functions
+  // 🚀 Animate camera to region
   const animateToRegion = useCallback((newRegion: any) => {
     mapRef.current?.animateToRegion(newRegion, 1000);
   }, []);
 
-  // const saveToRecent = useCallback((loc: LocationCoords) => {
-  //   setRecentLocations((prev) => [loc, ...prev].slice(0, MAX_RECENT_LOCATIONS));
-  // }, []);
+  // 🛣️ Fetch route and alternatives from Google Directions API
+  const fetchRoutes = useCallback(async () => {
+    if (!currentLocation || !destination) return;
+    setIsLoading(true);
+    console.log("🛰️ Fetching routes from Google Directions API...");
 
-  // const saveLocation = useCallback((loc: LocationCoords) => {
-  //   setSavedLocations((prev) => [...prev, loc]);
-  // }, []);
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await res.json();
+      if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
 
-const fetchRoutes = useCallback(async () => {
-  if (!currentLocation || !destination) return;
-  setIsLoading(true);
+      const processRoute = (r: any, i: number): RouteData => {
+        const leg = r.legs[0];
+        const fuel = selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0;
 
-  console.log("🛰️ Fetching routes...");
-  console.log("📍 Origin:", currentLocation);
-  console.log("🎯 Destination:", destination);
-  console.log("🛵 Selected Motor:", selectedMotor);
-
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
-    );
-    const data = await res.json();
-    if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
-
-    console.log("🧭 Google API Routes:", data.routes.length);
-
-    if (data.routes.length === 0) throw new Error("No routes found");
-
-    const processRoute = (r: any, i: number) => {
-      const leg = r.legs[0];
-      const fuel = selectedMotor
-        ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency
-        : 0;
-
-      console.log(`🚗 Route-${i} ➤ Distance: ${leg.distance.value}m, Duration: ${leg.duration.value}s, Fuel Est: ${fuel.toFixed(2)}L`);
-
-      return {
-        id: `route-${i}`,
-        distance: leg.distance.value,
-        duration: leg.duration.value,
-        fuelEstimate: fuel,
-        trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
-        coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
-          latitude: lat,
-          longitude: lng,
-        })),
-        instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
+        return {
+          id: `route-${i}`,
+          distance: leg.distance.value,
+          duration: leg.duration.value,
+          fuelEstimate: fuel,
+          trafficRate: Math.min(5, Math.max(1, Math.floor(Math.random() * 5))),
+          coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
+            latitude: lat,
+            longitude: lng,
+          })),
+          instructions: leg.steps.map((step: any) => step.html_instructions.replace(/<[^>]*>/g, "")),
+        };
       };
-    };
 
-    const allRoutes = data.routes.map(processRoute);
-    if (allRoutes.length < 2) Alert.alert("No alternatives found");
+      const allRoutes = data.routes.map(processRoute);
+      const alternatives = allRoutes.slice(1);
 
-    const alternatives = allRoutes.slice(1);
-    while (alternatives.length < 3) {
-      const last = alternatives[alternatives.length - 1];
-      alternatives.push({
-        ...last,
-        id: `route-${alternatives.length + 1}`,
-        distance: last.distance * 1.1,
-        duration: last.duration * 1.1,
-        fuelEstimate: last.fuelEstimate * 1.1,
-      });
-    }
-
-    const fetchTrafficReports = async () => {
-      try {
-        const res = await fetch("https://ts-backend-1-jyit.onrender.com/api/reports");
-        const data = await res.json();
-        const formatted: TrafficIncident[] = data.map((r: any) => ({
-          id: r._id,
-          location: r.location,
-          type: r.reportType,
-          severity: r.reportType.toLowerCase().includes("accident") ? "high" : "medium",
-          description: r.description,
-        }));
-        console.log("🚨 Traffic Reports Loaded:", formatted.length);
-        setTrafficIncidents(formatted);
-      } catch (err) {
-        console.error("⚠️ Failed to load traffic reports", err);
+      // Add dummy alternatives if fewer than 3
+      while (alternatives.length < 3 && alternatives.length > 0) {
+        const last = alternatives[alternatives.length - 1];
+        alternatives.push({
+          ...last,
+          id: `route-${alternatives.length + 1}`,
+          distance: last.distance * 1.1,
+          duration: last.duration * 1.1,
+          fuelEstimate: last.fuelEstimate * 1.1,
+        });
       }
-    };
 
-    setTripSummary(allRoutes[0]);
-    setAlternativeRoutes(alternatives);
-    setSelectedRouteId(allRoutes[0].id);
-    setShowBottomSheet(true);
-    await fetchTrafficReports();
+      // Fetch real-time traffic reports from backend
+      const fetchTrafficReports = async () => {
+        try {
+          const res = await fetch("https://ts-backend-1-jyit.onrender.com/api/reports");
+          const data = await res.json();
+          const formatted: TrafficIncident[] = data.map((r: any) => ({
+            id: r._id,
+            location: r.location,
+            type: r.reportType,
+            severity: r.reportType.toLowerCase().includes("accident") ? "high" : "medium",
+            description: r.description,
+          }));
+          setTrafficIncidents(formatted);
+        } catch (err) {
+          console.error("⚠️ Failed to load traffic reports", err);
+        }
+      };
 
-  } catch (error) {
-    console.error("❌ Route Fetch Error:", error.message);
-    Alert.alert("Route Error", error.message);
-  } finally {
-    setIsLoading(false);
-  }
-}, [currentLocation, destination, selectedMotor]);
+      setTripSummary(allRoutes[0]);
+      setAlternativeRoutes(alternatives);
+      setSelectedRouteId(allRoutes[0].id);
+      setShowBottomSheet(true);
+      await fetchTrafficReports();
+    } catch (error) {
+      console.error("❌ Route Fetch Error:", error.message);
+      Alert.alert("Route Error", error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentLocation, destination, selectedMotor]);
 
-
-
+  // 🚦 Start navigation and follow user's position
   const startNavigation = useCallback(() => {
     if (!selectedRoute) return;
-
     setIsNavigating(true);
     setIsFollowingUser(true);
 
@@ -461,27 +527,31 @@ const fetchRoutes = useCallback(async () => {
         longitudeDelta: 0.005,
       });
     }
-  }, [selectedRoute, currentLocation, destination]);
+  }, [selectedRoute, currentLocation]);
 
+  // 🛑 End navigation, save trip summary if arrived
   const endNavigation = useCallback((arrived: boolean = false) => {
     setIsNavigating(false);
     setIsFollowingUser(false);
 
-
     if (arrived && user && destination && selectedRoute) {
       setTripSummaryModalVisible(true);
-      saveTripSummaryToBackend({
-        userId: user.id,
-        distance: `${selectedRoute.distance.toFixed(2)} m`,
-        fuelUsed: `${selectedRoute.fuelEstimate.toFixed(2)} L`,
-        timeArrived: new Date().toISOString(),
-        eta: `${(selectedRoute.duration / 60).toFixed(2)} min`,
-        destination: destination.address || "Unknown",
-      });
+saveTripSummaryToBackend({
+  userId: user.id,
+ 
+  destination: destination.address || "Unknown",
+  motorUsed: selectedMotor?.name || "Unknown",
+  fuelEfficiency: selectedMotor?.fuelEfficiency || 0,
+  distance: `${(selectedRoute.distance / 1000).toFixed(2)} km`,
+  fuelUsed: `${selectedRoute.fuelEstimate.toFixed(2)} L`,
+  eta: formatETA(selectedRoute.duration),
+  timeArrived: new Date().toISOString(),
+});
 
     }
   }, [user, destination, selectedRoute]);
 
+  // 💾 Save trip summary to backend
   const saveTripSummaryToBackend = async (summary: TripSummary) => {
     try {
       await fetch(`${LOCALHOST_IP}/api/trips`, {
@@ -494,24 +564,24 @@ const fetchRoutes = useCallback(async () => {
     }
   };
 
-  // Render
-  if (!user) {
+  // 🌐 Loading States
+  if (!user || isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Loading user data...</Text>
+        <Text style={styles.loadingText}>
+          {!user ? "Loading user data..." : "Loading location..."}
+        </Text>
       </View>
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
-        <Text style={styles.loadingText}>Loading location...</Text>
-      </View>
-    );
-  }
+
+
+  // ✅ Continue with render (map, modals, UI controls, etc.)
+    // The rest of the render JSX you've written (header, map view, modals, route sheets, etc.)
+    // remains unchanged and is already well-structured.
+
 
   return (
     <SafeAreaProvider>
@@ -556,12 +626,13 @@ const fetchRoutes = useCallback(async () => {
               setDestination={setDestination}
               animateToRegion={animateToRegion}
               // saveToRecent={saveToRecent}
-              recentLocations={recentLocations}
-              savedLocations={savedLocations}
+              //recentLocations={recentLocations}
+              // savedLocations={savedLocations}
               selectedMotor={selectedMotor}
-              setSelectedMotor={setSelectedMotor}
+              setSelectedMotor={setSelectedMotor} 
               motorList={motorList}
               onPlaceSelectedCloseModal={() => setModalVisible(false)}
+              
             />
           </View>
         </Modal>
@@ -627,15 +698,20 @@ const fetchRoutes = useCallback(async () => {
           </MapView>
 
           {/* Controls */}
+          {!selectedRoute && (
+            
           <TouchableOpacity onPress={fetchRoutes} style={styles.getRouteButton}>
             <Text style={styles.buttonText}>Get Routes</Text>
           </TouchableOpacity>
+          )}
 
           {selectedRoute && !isNavigating && (
             <TouchableOpacity onPress={startNavigation} style={styles.navigationButton}>
               <Text style={styles.buttonText}>Start Navigation</Text>
             </TouchableOpacity>
+            
           )}
+
 
           {/* Navigation Overlay */}
           {isNavigating && (
@@ -672,66 +748,104 @@ const fetchRoutes = useCallback(async () => {
         </View>
 
         {/* Route Details */}
-        <RouteDetailsBottomSheet
-          visible={showBottomSheet}
-          bestRoute={tripSummary}
-          alternatives={alternativeRoutes}
-          onClose={() => setShowBottomSheet(false)}
-          selectedRouteId={selectedRouteId}
-          onSelectRoute={(id) => {
-            setSelectedRouteId(id);
-            const route = id === tripSummary?.id ? tripSummary : alternativeRoutes.find(r => r.id === id);
-            if (route) {
-              mapRef.current?.fitToCoordinates(route.coordinates, {
-                edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
-                animated: true,
-              });
-            }
-          }}
-        />
+<RouteDetailsBottomSheet
+  visible={showBottomSheet}
+  bestRoute={tripSummary}
+  alternatives={alternativeRoutes}
+  onClose={() => setShowBottomSheet(false)}
+  selectedRouteId={selectedRouteId}
+  selectedMotor={selectedMotor} // ✅ Add this
+  onSelectRoute={(id) => {
+    setSelectedRouteId(id);
+    const route = id === tripSummary?.id ? tripSummary : alternativeRoutes.find(r => r.id === id);
+    if (route) {
+      mapRef.current?.fitToCoordinates(route.coordinates, {
+        edgePadding: { top: 100, right: 50, bottom: 300, left: 50 },
+        animated: true,
+      });
+    }
+  }}
+/>
 
         {/* Trip Summary Modal */}
-        <Modal transparent visible={tripSummaryModalVisible} animationType="fade">
-          <View style={styles.summaryModalContainer}>
-            <View style={styles.summaryModal}>
-              <Text style={styles.summaryTitle}>Trip Completed</Text>
+<Modal transparent visible={tripSummaryModalVisible} animationType="fade">
+  <View style={styles.summaryModalContainer}>
+    <View style={styles.summaryModal}>
+      <Text style={styles.summaryTitle}>Trip Completed</Text>
 
-              {selectedRoute && destination && (
-                <>
-                  <View style={styles.summaryRow}>
-                    <MaterialIcons name="place" size={20} color="#e74c3c" />
-                    <Text style={styles.summaryText} numberOfLines={2}>{destination.address}</Text>
-                  </View>
+      {selectedRoute && destination && currentLocation && selectedMotor && (
+        <>
+          {/* From */}
+          {/* <View style={styles.summaryRow}>
+            <MaterialIcons name="my-location" size={20} color="#34495e" />
+            <Text style={styles.summaryText} numberOfLines={2}>
+              From: {`${reverseGeocodeLocation(currentLocation.latitude, currentLocation.longitude)}`}
+            </Text>
+          </View> */}
 
-                  <View style={styles.summaryRow}>
-                    <MaterialIcons name="directions-car" size={20} color="#3498db" />
-                    <Text style={styles.summaryText}>{(selectedRoute.distance / 1000).toFixed(2)} km</Text>
-                  </View>
-
-                  <View style={styles.summaryRow}>
-                    <MaterialIcons name="local-gas-station" size={20} color="#2ecc71" />
-                    <Text style={styles.summaryText}>{selectedRoute.fuelEstimate.toFixed(2)} L</Text>
-                  </View>
-
-                  <View style={styles.summaryRow}>
-                    <MaterialIcons name="schedule" size={20} color="#9b59b6" />
-                    <Text style={styles.summaryText}>{formatETA(selectedRoute.duration)}</Text>
-                  </View>
-                </>
-              )}
-
-              <TouchableOpacity
-                onPress={() => {
-                  setTripSummaryModalVisible(false);
-                  navigation.goBack();
-                }}
-                style={styles.closeSummaryButton}
-              >
-                <Text style={styles.closeSummaryText}>Done</Text>
-              </TouchableOpacity>
-            </View>
+          {/* To */}
+          <View style={styles.summaryRow}>
+            <MaterialIcons name="place" size={20} color="#e74c3c" />
+            <Text style={styles.summaryText} numberOfLines={2}>
+              To: {destination.address}
+            </Text>
           </View>
-        </Modal>
+
+          {/* Distance */}
+          <View style={styles.summaryRow}>
+            <MaterialIcons name="directions-car" size={20} color="#3498db" />
+            <Text style={styles.summaryText}>
+              Distance: {(selectedRoute.distance / 1000).toFixed(2)} km
+            </Text>
+          </View>
+
+          {/* Fuel Estimate */}
+          <View style={styles.summaryRow}>
+            <MaterialIcons name="local-gas-station" size={20} color="#2ecc71" />
+            <Text style={styles.summaryText}>
+              Fuel Used: {selectedRoute.fuelEstimate.toFixed(2)} L
+            </Text>
+          </View>
+
+          {/* Fuel Range */}
+          {/* <View style={styles.summaryRow}>
+            <MaterialIcons name="speed" size={20} color="#f39c12" />
+            <Text style={styles.summaryText}>
+              Motor Range: ~{(selectedMotor.fuelEfficiency * selectedRoute.fuelEstimate).toFixed(1)} km
+            </Text>
+          </View> */}
+
+          {/* ETA */}
+          <View style={styles.summaryRow}>
+            <MaterialIcons name="schedule" size={20} color="#9b59b6" />
+            <Text style={styles.summaryText}>
+              ETA: {formatETA(selectedRoute.duration)}
+            </Text>
+          </View>
+
+          {/* Motor Used */}
+          <View style={styles.summaryRow}>
+            <MaterialIcons name="two-wheeler" size={20} color="#1abc9c" />
+            <Text style={styles.summaryText}>
+              Motor Used: {selectedMotor.name} ({selectedMotor.fuelEfficiency} km/L)
+            </Text>
+          </View>
+        </>
+      )}
+
+      <TouchableOpacity
+        onPress={() => {
+          setTripSummaryModalVisible(false);
+          navigation.goBack();
+        }}
+        style={styles.closeSummaryButton}
+      >
+        <Text style={styles.closeSummaryText}>Done</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -835,7 +949,7 @@ const styles = StyleSheet.create({
   },
   navigationButton: {
     position: 'absolute',
-    bottom: 20,
+    top: 20,
     left: 20,
     right: 20,
     backgroundColor: '#2ecc71',

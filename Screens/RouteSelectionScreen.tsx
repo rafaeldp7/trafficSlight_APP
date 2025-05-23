@@ -393,7 +393,7 @@ useEffect(() => {
   showGasStations={showGasStations}
 />
 
-        <View style={{ position: 'absolute', bottom: 170, right: 20 }}>
+        <View style={{ position: 'absolute', top: 40, right: 10, zIndex: 1000 }}>
   <TouchableOpacity onPress={() => setShowReports(!showReports)} style={[styles.toggleButton, { backgroundColor: showReports ? '#3498db' : '#ccc' }]}>
     <Text style={styles.toggleText}>Reports</Text>
   </TouchableOpacity>

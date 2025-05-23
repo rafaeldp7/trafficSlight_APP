@@ -24,6 +24,11 @@ import FuelCalculatorScreen from "../Screens/loggedIn/FuelCalculatorScreen";
 import AddFuelLogScreen from "../Screens/loggedIn/addFuelLogsScreen";
 import addSavedDestinationScreen from "../Screens/loggedIn/addSavedDestinationScreen";
 import AllDestinationsMapScreen from "../Screens/loggedIn/allSavedDestination";
+import ChangeEmailScreen from "../Screens/account_tab/ChangeEmailScreen";
+import ChangePasswordScreen from "../Screens/account_tab/ChangePasswordScreen";
+import PrivacySettingsScreen from "../Screens/account_tab/PrivacySettingsScreen";
+import NotificationSettings from "../Screens/account_tab/NotificationSettingsScreen";
+
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -86,6 +91,10 @@ export default function SignedInStack() {
   <Stack.Screen name="addSavedDestinationScreen" component={addSavedDestinationScreen} />
   <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
   {/* 👆 Add these for Home navigation */}
+    <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
+  <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+  <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
+  <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
 
 </Stack.Navigator>
 

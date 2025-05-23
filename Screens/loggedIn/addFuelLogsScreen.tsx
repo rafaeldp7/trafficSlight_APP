@@ -25,6 +25,7 @@ export default function AddFuelLogScreen() {
   const [liters, setLiters] = useState("");
   const [pricePerLiter, setPricePerLiter] = useState("");
   const [totalCost, setTotalCost] = useState("");
+  const [computedField, setComputedField] = useState(null);
 
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
@@ -32,32 +33,12 @@ export default function AddFuelLogScreen() {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    if (user?._id) {
-      fetchMotors();
-    }
+    if (user?._id) fetchMotors();
   }, [user]);
-
-  useEffect(() => {
-    autoComputeFields();
-  }, [liters, pricePerLiter, totalCost]);
-
-  const autoComputeFields = () => {
-    const l = parseFloat(liters);
-    const p = parseFloat(pricePerLiter);
-    const t = parseFloat(totalCost);
-
-    if (!isNaN(l) && !isNaN(p) && isNaN(t)) {
-      setTotalCost((l * p).toFixed(2));
-    } else if (!isNaN(l) && !isNaN(t) && isNaN(p)) {
-      setPricePerLiter((t / l).toFixed(2));
-    } else if (!isNaN(p) && !isNaN(t) && isNaN(l)) {
-      setLiters((t / p).toFixed(2));
-    }
-  };
 
   const fetchMotors = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/user-motors/user-motors/${user._id}`);
+      const res = await axios.get(`${API_BASE}/api/user-motors/${user._id}`);
       setMotors(res.data);
       setItems(
         res.data.map((motor) => ({
@@ -70,6 +51,54 @@ export default function AddFuelLogScreen() {
     }
   };
 
+  const handleLitersChange = (value) => {
+    setLiters(value);
+    const l = parseFloat(value);
+    const p = parseFloat(pricePerLiter);
+    const t = parseFloat(totalCost);
+    if (!isNaN(l) && !isNaN(p)) {
+      setTotalCost((l * p).toFixed(2));
+      setComputedField("totalCost");
+    } else if (!isNaN(l) && !isNaN(t)) {
+      setPricePerLiter((t / l).toFixed(2));
+      setComputedField("pricePerLiter");
+    } else {
+      setComputedField(null);
+    }
+  };
+
+  const handlePriceChange = (value) => {
+    setPricePerLiter(value);
+    const l = parseFloat(liters);
+    const p = parseFloat(value);
+    const t = parseFloat(totalCost);
+    if (!isNaN(l) && !isNaN(p)) {
+      setTotalCost((l * p).toFixed(2));
+      setComputedField("totalCost");
+    } else if (!isNaN(t) && !isNaN(p)) {
+      setLiters((t / p).toFixed(2));
+      setComputedField("liters");
+    } else {
+      setComputedField(null);
+    }
+  };
+
+  const handleTotalCostChange = (value) => {
+    setTotalCost(value);
+    const l = parseFloat(liters);
+    const p = parseFloat(pricePerLiter);
+    const t = parseFloat(value);
+    if (!isNaN(l) && !isNaN(t)) {
+      setPricePerLiter((t / l).toFixed(2));
+      setComputedField("pricePerLiter");
+    } else if (!isNaN(p) && !isNaN(t)) {
+      setLiters((t / p).toFixed(2));
+      setComputedField("liters");
+    } else {
+      setComputedField(null);
+    }
+  };
+
   const handleConfirm = async () => {
     try {
       const payload = {
@@ -79,7 +108,7 @@ export default function AddFuelLogScreen() {
         pricePerLiter: parseFloat(pricePerLiter),
       };
 
-      const res = await axios.post(`${API_BASE}/api/fuel-logs`, payload);
+      await axios.post(`${API_BASE}/api/fuel-logs`, payload);
       setShowModal(false);
       Alert.alert("Success", "Fuel log added successfully.");
       navigation.goBack();
@@ -91,79 +120,80 @@ export default function AddFuelLogScreen() {
 
   const handleSubmit = () => {
     if (!selectedMotor || !liters || !pricePerLiter || !totalCost) {
-      return Alert.alert("Missing Fields", "Please complete at least two values to compute the third.");
+      return Alert.alert("Missing Fields", "Please complete at least two values.");
     }
     setShowModal(true);
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Add Fuel Log</Text>
+return (
+  <ScrollView contentContainerStyle={styles.container}>
+    <Text style={styles.title}>Add Fuel Log</Text>
 
-      <Text style={styles.label}>Select Motor</Text>
-      <DropDownPicker
-        open={open}
-        value={selectedMotor}
-        items={items}
-        setOpen={setOpen}
-        setValue={setSelectedMotor}
-        setItems={setItems}
-        placeholder="Select your motor"
-        style={styles.dropdown}
-      />
+    <Text style={styles.label}>Select Motor</Text>
+    <DropDownPicker
+      open={open}
+      value={selectedMotor}
+      items={items}
+      setOpen={setOpen}
+      setValue={setSelectedMotor}
+      setItems={setItems}
+      placeholder="Select your motor"
+      style={styles.dropdown}
+      listMode="SCROLLVIEW" // <- avoid FlatList warning
+    />
 
-      <Text style={styles.label}>Liters Fueled</Text>
-      <TextInput
-        keyboardType="numeric"
-        value={liters}
-        onChangeText={(text) => setLiters(text)}
-        style={styles.input}
-        placeholder="e.g., 4.5"
-      />
+    <Text style={styles.label}>Liters Fueled</Text>
+    <TextInput
+      keyboardType="numeric"
+      value={liters}
+      onChangeText={handleLitersChange}
+      style={[styles.input, computedField === "liters" && styles.highlightInput]}
+      placeholder="e.g., 4.5"
+    />
 
-      <Text style={styles.label}>Price per Liter</Text>
-      <TextInput
-        keyboardType="numeric"
-        value={pricePerLiter}
-        onChangeText={(text) => setPricePerLiter(text)}
-        style={styles.input}
-        placeholder="e.g., 65.00"
-      />
+    <Text style={styles.label}>Price per Liter</Text>
+    <TextInput
+      keyboardType="numeric"
+      value={pricePerLiter}
+      onChangeText={handlePriceChange}
+      style={[styles.input, computedField === "pricePerLiter" && styles.highlightInput]}
+      placeholder="e.g., 65.00"
+    />
 
-      <Text style={styles.label}>Total Amount Paid</Text>
-      <TextInput
-        keyboardType="numeric"
-        value={totalCost}
-        onChangeText={(text) => setTotalCost(text)}
-        style={styles.input}
-        placeholder="e.g., 250"
-      />
+    <Text style={styles.label}>Total Amount Paid</Text>
+    <TextInput
+      keyboardType="numeric"
+      value={totalCost}
+      onChangeText={handleTotalCostChange}
+      style={[styles.input, computedField === "totalCost" && styles.highlightInput]}
+      placeholder="e.g., 250"
+    />
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Submit</Text>
-      </TouchableOpacity>
+    <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+      <Text style={styles.buttonText}>Submit</Text>
+    </TouchableOpacity>
 
-      <Modal visible={showModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Confirm Fuel Log</Text>
-            <Text style={styles.modalText}>Liters: {liters}</Text>
-            <Text style={styles.modalText}>Price per Liter: ₱{pricePerLiter}</Text>
-            <Text style={styles.modalText}>Total: ₱{totalCost}</Text>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-                <Text style={styles.confirmText}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
+    <Modal visible={showModal} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Confirm Fuel Log</Text>
+          <Text style={styles.modalText}>Liters: {liters}</Text>
+          <Text style={styles.modalText}>Price per Liter: ₱{pricePerLiter}</Text>
+          <Text style={styles.modalText}>Total: ₱{totalCost}</Text>
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowModal(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
+              <Text style={styles.confirmText}>Confirm</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </ScrollView>
-  );
+      </View>
+    </Modal>
+  </ScrollView>
+);
+
 }
 
 const styles = StyleSheet.create({
@@ -188,6 +218,10 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: "#fff",
+  },
+  highlightInput: {
+    backgroundColor: "#fff9c4", // light yellow
+    borderColor: "#fbc02d",
   },
   dropdown: {
     borderColor: "#ccc",

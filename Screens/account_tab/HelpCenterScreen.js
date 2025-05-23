@@ -12,7 +12,7 @@ export default function HelpCenterScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={tw`text-lg font-bold ml-4`}>Notifications</Text>
+        <Text style={tw`text-lg font-bold ml-4`}>Help Center</Text>
       </View>
 
       {/* Scrollable FAQ Section */}
@@ -20,33 +20,48 @@ export default function HelpCenterScreen({ navigation }) {
         <Text style={tw`text-lg font-semibold mb-2`}>Frequently Asked Questions</Text>
 
         {/* FAQ Item */}
-        <View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
-          <Text style={tw`font-bold text-base`}>How do I track my rides?</Text>
-          <Text style={tw`text-gray-600 mt-1`}>
-            You can track your rides in the "History" section of the app.
-          </Text>
-        </View>
+
+
 
         <View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
-          <Text style={tw`font-bold text-base`}>How can I add a motorcycle?</Text>
-          <Text style={tw`text-gray-600 mt-1`}>
-            Go to the "Profile" screen and select "Add Motor" to register a new motorcycle.
-          </Text>
-        </View>
+  <Text style={tw`font-bold text-base`}>How do I add a motorcycle?</Text>
+  <Text style={tw`text-gray-600 mt-1`}>
+    Go to the "Add Motor" screen from the Account tab. Fill in the model, nickname, plate number, and select your motorcycle from the list.
+  </Text>
+</View>
 
-        <View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
-          <Text style={tw`font-bold text-base`}>What should I do if the app crashes?</Text>
-          <Text style={tw`text-gray-600 mt-1`}>
-            Try restarting the app. If the issue persists, reinstall the app or contact support.
-          </Text>
-        </View>
+<View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
+  <Text style={tw`font-bold text-base`}>How does fuel tracking work?</Text>
+  <Text style={tw`text-gray-600 mt-1`}>
+    After adding a motor, you can log fuel consumption by inputting liters, total cost, and other details. You’ll find it under the Fuel Logs section.
+  </Text>
+</View>
 
-        {/* Add More FAQs Here */}
+<View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
+  <Text style={tw`font-bold text-base`}>How can I use the map and navigation?</Text>
+  <Text style={tw`text-gray-600 mt-1`}>
+    Select a destination from the map. The app will generate a route and provide fuel estimates based on your selected motorcycle’s data.
+  </Text>
+</View>
 
-        {/* Contact Support Button */}
-        <TouchableOpacity style={tw`bg-blue-500 p-4 rounded-lg items-center mt-5`}>
-          <Text style={tw`text-white font-bold text-lg`}>Contact Support</Text>
-        </TouchableOpacity>
+
+
+
+<View style={tw`mb-4 p-4 border border-gray-300 rounded-lg`}>
+  <Text style={tw`font-bold text-base`}>How do I submit a traffic report?</Text>
+  <Text style={tw`text-gray-600 mt-1`}>
+    Tap the alert button on the main map screen to submit reports like accidents, road closures, or hazards. Your location will be auto-filled.
+  </Text>
+</View>
+
+
+
+
+
+
+
+
+
       </ScrollView>
     </View>
   );

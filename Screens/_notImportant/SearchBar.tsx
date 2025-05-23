@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_API_KEY } from "@env";
-
-
-
+import axios from "axios";
 import type { GooglePlacesAutocompleteRef } from "react-native-google-places-autocomplete";
+
+const API_BASE = "https://ts-backend-1-jyit.onrender.com/api/saved-destinations";
 
 type SearchBarProps = {
   searchRef: React.RefObject<GooglePlacesAutocompleteRef>;
@@ -24,14 +24,11 @@ type SearchBarProps = {
     destination: { latitude: number; longitude: number; address?: string } | null
   ) => void;
   animateToRegion: (region: any) => void;
-  saveToRecent: (location: any) => void;
-  recentLocations: any[];
-  savedLocations: any[];
   selectedMotor: { name: string; fuelEfficiency: number } | null;
   setSelectedMotor: (motor: { name: string; fuelEfficiency: number } | null) => void;
   motorList: { name: string; fuelEfficiency: number }[];
   onPlaceSelectedCloseModal: () => void;
-
+  userId: string; // added prop
 };
 
 const SearchBar = ({
@@ -42,17 +39,31 @@ const SearchBar = ({
   setIsTyping,
   setDestination,
   animateToRegion,
-  // saveToRecent,
-  recentLocations,
-  savedLocations,
-  motorList,
   selectedMotor,
   setSelectedMotor,
+  motorList,
   onPlaceSelectedCloseModal,
-
+  userId,
 }: SearchBarProps) => {
-  const [activeTab, setActiveTab] = useState("Recent");
+  const [savedLocations, setSavedLocations] = useState([]);
 
+  useEffect(() => {
+    const fetchSaved = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/${userId}`);
+        const mapped = res.data.map((loc) => ({
+          latitude: loc.location.latitude,
+          longitude: loc.location.longitude,
+          address: loc.label,
+        }));
+        setSavedLocations(mapped);
+      } catch (err) {
+        console.error("Failed to fetch saved destinations:", err);
+      }
+    };
+
+    if (userId) fetchSaved();
+  }, [userId]);
 
   const handlePlaceSelect = (place: {
     address: string;
@@ -67,15 +78,12 @@ const SearchBar = ({
       longitudeDelta: 0.001,
     });
     onPlaceSelectedCloseModal();
-    // saveToRecent(place);
   };
-
-
 
   return (
     <View>
       <View style={{ marginBottom: 10 }}>
-        <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 6 }}>Motor Used</Text>
+        <Text style={{ fontSize: 26, fontWeight: "bold", padding: 10 }}>Motor Used</Text>
         {motorList.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {motorList.map((motor, index) => (
@@ -89,9 +97,16 @@ const SearchBar = ({
                   paddingHorizontal: 12,
                   borderRadius: 10,
                   marginRight: 8,
+                  marginLeft: 10,
+                  width: 130,
                 }}
               >
-                <Text style={{ color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50" }}>
+                <Text
+                  style={{
+                    fontSize: 17,
+                    color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50",
+                  }}
+                >
                   {motor.name} ({motor.fuelEfficiency} km/L)
                 </Text>
               </TouchableOpacity>
@@ -124,11 +139,11 @@ const SearchBar = ({
           }
         }}
         textInputProps={{
-          value: searchText,
-          onChangeText: setSearchText,
-          placeholderTextColor: "#888",
-          onFocus: () => setIsTyping(true),
-          onBlur: () => setIsTyping(false),
+  value: searchText,
+  onChangeText: setSearchText,
+  placeholderTextColor: "#888",
+  onFocus: () => setIsTyping(true),
+  onBlur: () => setIsTyping(false),
         }}
         query={{ key: GOOGLE_MAPS_API_KEY, language: "en" }}
         styles={{
@@ -151,27 +166,16 @@ const SearchBar = ({
         }}
       />
 
-
-
       {!isTyping && (
         <>
-          <View style={styles.tabsContainer}>
-            {["Recent", "Saved"].map((tab) => (
-              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}>
-                <Text style={[styles.tabText, activeTab === tab && styles.activeTab]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={styles.savedHeader}>Saved Locations</Text>
           <ScrollView style={styles.tabContent}>
-            {(activeTab === "Recent" ? recentLocations : savedLocations).map(
-              (place, index) =>
-                place?.address && (
-                  <TouchableOpacity key={index} onPress={() => handlePlaceSelect(place)}>
-                    <Text>{place.address}</Text>
-                  </TouchableOpacity>
-                )
+            {savedLocations.map((place, index) =>
+              place?.address ? (
+                <TouchableOpacity key={index} onPress={() => handlePlaceSelect(place)}>
+                  <Text style={styles.savedItem}>{place.address}</Text>
+                </TouchableOpacity>
+              ) : null
             )}
           </ScrollView>
         </>
@@ -183,32 +187,22 @@ const SearchBar = ({
 export default SearchBar;
 
 const styles = StyleSheet.create({
-  suggestionsContainer: {
-    maxHeight: 150,
-    backgroundColor: "#fff",
-    elevation: 5,
-    marginTop: 5,
-  },
-  suggestionItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  tabsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 60,
-  },
-  tabText: {
-    fontSize: 16,
-    color: "#666",
-  },
-  activeTab: {
-    color: "#000",
+  savedHeader: {
+    fontSize: 18,
     fontWeight: "bold",
-    textDecorationLine: "underline",
+    marginHorizontal: 10,
+    marginTop: 20,
+    color: "#444",
+  },
+  savedItem: {
+    padding: 12,
+    fontSize: 15,
+    borderBottomColor: "#ddd",
+    borderBottomWidth: 1,
+    marginHorizontal: 10,
   },
   tabContent: {
     marginTop: 10,
+    maxHeight: 180,
   },
 });

@@ -56,7 +56,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Account Section */}
       <Text style={tw`text-lg font-semibold mt-4 mb-3`}>Account</Text>
       <View style={tw`rounded-lg bg-gray-100 p-1`}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           accessible
           accessibilityLabel="Notification Settings"
           style={tw`flex-row justify-between items-center p-2 m-1`}
@@ -65,7 +65,7 @@ const ProfileScreen = ({ navigation }) => {
           <Ionicons name="notifications-outline" size={iconSize} color="#000" />
           <Text style={tw`text-black text-base flex-1 text-left`}>Notifications</Text>
           <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity
           accessible
@@ -121,8 +121,9 @@ const ProfileScreen = ({ navigation }) => {
           style={tw`flex-row justify-between items-center p-2 m-1`}
           onPress={() => navigation.navigate("ReportBugScreen")}
         >
-          <Ionicons name="bug-outline" size={iconSize} color="#000" />
-          <Text style={tw`text-black text-base flex-1 text-left`}>Report a Bug</Text>
+          <Ionicons name="shield-outline" size={iconSize} color="#000" />
+
+          <Text style={tw`text-black text-base flex-1 text-left`}>Privacy Policy</Text>
           <Ionicons name="chevron-forward-outline" size={24} color="#000" />
         </TouchableOpacity>
       </View>

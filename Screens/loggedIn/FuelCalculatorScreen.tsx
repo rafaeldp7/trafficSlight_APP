@@ -27,7 +27,7 @@ export default function FuelCalculatorScreen() {
   useEffect(() => {
     const fetchMotors = async () => {
       try {
-        const res = await axios.get(`${LOCALHOST_IP}/api/user-motors/user-motors/${user._id}`);
+        const res = await axios.get(`${LOCALHOST_IP}/api/user-motors/user/${user._id}`);
         setMotorList(res.data);
       } catch (err) {
         console.error('Failed to fetch motor list:', err.message);
