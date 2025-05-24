@@ -4,6 +4,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../AuthContext/AuthContext";
 import { useUser } from "../../AuthContext/UserContext";
 import tw from "twrnc";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // Utility for scaling font sizes
 const fontScale = PixelRatio.getFontScale();
@@ -35,6 +36,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
+    <SafeAreaView style={tw`flex-1 bg-white`}>
     <View style={tw`flex-1 bg-white p-5`}>
       {/* Header */}
       <Text style={[tw`mt-10 mb-10 font-bold`, { fontSize: scaleFont(32) }]}>
@@ -128,6 +130,7 @@ const ProfileScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
     </View>
+    </SafeAreaView>
   );
 };
 

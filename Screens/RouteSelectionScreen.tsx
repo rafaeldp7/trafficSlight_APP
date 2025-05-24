@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
-  TextInput
+  TextInput,
+  SafeAreaView
 } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
@@ -316,6 +317,7 @@ useEffect(() => {
 
 
   return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -412,6 +414,7 @@ useEffect(() => {
 
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 };
 
