@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
-    "platforms": ["ios", "android","web"],
+    "platforms": ["ios", "android", "web"],
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -22,7 +22,12 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#000000"
       },
-      "permissions": ["ACCESS_FINE_LOCATION"]
+      "permissions": ["ACCESS_FINE_LOCATION"],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAzFeqvqzZUO9kfLVZZOrlOwP5Fg4LpLf4"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,6 +45,7 @@
           "locationWhenInUsePermission": "Allow TrafficSlight to access your location while using the app."
         }
       ]
+      
     ]
   }
 }

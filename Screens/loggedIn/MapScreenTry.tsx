@@ -99,6 +99,10 @@ const calculateFuelRange = (distance: number, fuelEfficiency: number) => {
 };
 
 
+
+
+calculateFuelRange(100, 20); // Example usage: 100 km distance, 20 km/L fuel efficiency
+
 // ----------------------------------------------------------------
 // Helper Functions
 // ----------------------------------------------------------------

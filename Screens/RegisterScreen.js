@@ -20,19 +20,35 @@ import { AuthContext } from "../AuthContext/AuthContext";
 import { LOCALHOST_IP } from "@env";
 
 // Sample barangay data for Valenzuela
-const valenzuelaData = 
+const valenzuelaData =
   ["Arkong Bato",
-  "Bagbaguin",
-  "Bignay",
-  "Bisig",
-  "Canumay East",
-  "Canumay West",
-  "Coloong",
-  "Dalandanan",
-  "Paso de Blas",
-  "Poblacion"]
+    "Bagbaguin",
+    "Bignay",
+    "Bisig",
+    "Canumay East",
+    "Canumay West",
+    "Coloong",
+    "Dalandanan",
+    "Gen. T. De Leon",
+    "Karuhatan",
+    "Lawang Bato",
+    "Lingunan",
+    "Malanday",
+    "Mapulang Lupa",
+    "Malinta",
+    "Palasan",
+    "Parada",
+    "Paso de Blas",
+    "Pasolo",
+    "Polo",
+  "Punturin",
+  "Rincon",
+  "Tagalag",
+  "Ugong",
+  "Veinte Reales",
+  "Wawang Pulo",]
   // Add more barangays as needed
-;
+  ;
 
 const inputTheme = {
   colors: {
@@ -110,7 +126,7 @@ export default function RegisterScreen({ navigation }) {
 
   const handleRegister = async () => {
     if (loading) return;
-    
+
     // Validate all fields
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
@@ -133,7 +149,7 @@ export default function RegisterScreen({ navigation }) {
 
       const response = await fetch(`${LOCALHOST_IP}/api/auth/register`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
         },
@@ -167,7 +183,7 @@ export default function RegisterScreen({ navigation }) {
                 setConfirmPassword("");
                 setBarangay("");
                 setStreet("");
-                
+
                 // Navigate to login or a verification waiting screen
                 navigation.navigate("VerifyOtp");
               },
@@ -180,7 +196,7 @@ export default function RegisterScreen({ navigation }) {
       }
     } catch (error) {
       console.error("Registration Error:", error);
-      
+
       if (error.name === 'AbortError') {
         Alert.alert("Timeout", "Request timed out. Please check your connection and try again.");
       } else {
@@ -300,7 +316,7 @@ export default function RegisterScreen({ navigation }) {
           onChangeText={setStreet}
           style={styles.input}
           theme={inputTheme}
-          right={barangay && getAvailableStreets().length > 0 ? 
+          right={barangay && getAvailableStreets().length > 0 ?
             <TextInput.Icon icon="chevron-down" iconColor="#007AFF" /> : null
           }
         />
@@ -313,20 +329,20 @@ export default function RegisterScreen({ navigation }) {
             contentContainerStyle={styles.modal}
           >
             <Text style={styles.modalTitle}>Select Barangay</Text>
-<ScrollView style={styles.modalScroll}>
-  {valenzuelaData.map((b) => (
-    <List.Item
-      key={b}
-      title={b}
-      titleStyle={styles.listItem}
-      onPress={() => {
-        setBarangay(b);
-        setStreet("");
-        setBarangayModal(false);
-      }}
-    />
-  ))}
-</ScrollView>
+            <ScrollView style={styles.modalScroll}>
+              {valenzuelaData.map((b) => (
+                <List.Item
+                  key={b}
+                  title={b}
+                  titleStyle={styles.listItem}
+                  onPress={() => {
+                    setBarangay(b);
+                    setStreet("");
+                    setBarangayModal(false);
+                  }}
+                />
+              ))}
+            </ScrollView>
 
           </Modal>
         </Portal>
