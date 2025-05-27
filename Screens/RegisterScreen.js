@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import {
   TextInput,
@@ -36,6 +37,7 @@ const valenzuelaData =
     "Malanday",
     "Mapulang Lupa",
     "Malinta",
+    "Maysan",
     "Palasan",
     "Parada",
     "Paso de Blas",
@@ -185,7 +187,8 @@ export default function RegisterScreen({ navigation }) {
                 setStreet("");
 
                 // Navigate to login or a verification waiting screen
-                navigation.navigate("VerifyOtp");
+                navigation.navigate("VerifyOtp", { email });
+
               },
             },
           ]
@@ -211,9 +214,17 @@ export default function RegisterScreen({ navigation }) {
     return barangay && valenzuelaData[barangay] ? valenzuelaData[barangay] : [];
   };
 
+
+
+
+  
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
+        <Image
+          source={require("../assets/logo.png")}
+          style={{ width: 100, height: 100, alignSelf: "center", marginBottom: 20 }}
+        />
         <Text style={styles.title}>Create a New Account</Text>
 
         <TextInput

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+import MapViewDirections from " ";
 
 import { GOOGLE_MAPS_API_KEY } from "@env";
 

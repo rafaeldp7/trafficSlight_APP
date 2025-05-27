@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Image, StyleSheet, Dimensions } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+import MapViewDirections from " ";
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
 // Constants (can be moved to a shared constants file)

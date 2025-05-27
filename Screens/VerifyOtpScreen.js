@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { TextInput, Button, HelperText } from "react-native-paper";
 import { LOCALHOST_IP } from "@env";
@@ -110,9 +111,13 @@ const [email, setEmail] = useState(route.params?.email || "");
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Email Verification</Text>
+      <Image
+        source={require("../assets/logo.png")}
+        style={{ width: 100, height: 100, alignSelf: "center", marginBottom: 20 }}
+      />
+      <Text style={styles.title}>Verify your Email</Text>
 
-      <TextInput
+      {/* <TextInput
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -120,7 +125,7 @@ const [email, setEmail] = useState(route.params?.email || "");
         keyboardType="email-address"
         style={styles.input}
         theme={inputTheme}
-      />
+      /> */}
 
       <TextInput
         label="OTP Code"

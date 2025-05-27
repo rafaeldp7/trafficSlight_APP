@@ -237,25 +237,21 @@ const handleLogin = async () => {
     }
   }, [response]);
 
-  const handleForgotPassword = () => {
-    // Navigate to forgot password screen or show modal
-    Alert.alert(
-      "Reset Password",
-      "Would you like to reset your password?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Reset", 
-          onPress: () => {
-            // Navigate to forgot password screen
-            // navigation.navigate("ForgotPassword");
-           navigation.navigate("ForgotPassword");
+const handleForgotPassword = () => {
+  if (!email.trim()) {
+    Alert.alert("Missing Email", "Please enter your email address first.");
+    return;
+  }
 
-          }
-        }
-      ]
-    );
-  };
+  const isEmailValid = validateEmail(email);
+  if (!isEmailValid) {
+    Alert.alert("Invalid Email", "Please enter a valid email address before resetting your password.");
+    return;
+  }
+
+  // Navigate directly to ForgotPassword screen with the entered email
+  navigation.navigate("ResetOtp", { email });
+};
 
   return (
     <KeyboardAvoidingView 
@@ -337,18 +333,7 @@ const handleLogin = async () => {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* <Button
-            mode="outlined"
-            onPress={handleGoogleLogin}
-            disabled={!request || loading || googleLoading}
-            loading={googleLoading}
-            style={styles.googleButton}
-            labelStyle={styles.googleButtonText}
-            contentStyle={styles.buttonContent}
-            icon="google"
-          >
-            {googleLoading ? "Connecting..." : "Continue with Google"}
-          </Button> */}
+
 
           <TouchableOpacity 
             onPress={() => navigation.navigate("Register")}

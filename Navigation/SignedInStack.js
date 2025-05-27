@@ -28,7 +28,8 @@ import ChangeEmailScreen from "../Screens/account_tab/ChangeEmailScreen";
 import ChangePasswordScreen from "../Screens/account_tab/ChangePasswordScreen";
 import PrivacySettingsScreen from "../Screens/account_tab/PrivacySettingsScreen";
 import NotificationSettings from "../Screens/account_tab/NotificationSettingsScreen";
-
+import LicenseOCR from "../Screens/loggedIn/LicenceScanner";
+import allSavedDestinationScreen from "../Screens/loggedIn/allSavedDestination";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -67,7 +68,8 @@ export default function SignedInStack() {
 <Stack.Navigator screenOptions={{ headerShown: false }}>
   <Stack.Screen name="MainTabs" component={MainTabs} />
 
-  <Stack.Screen name="Home" component={HomeScreen} />
+  <Stack.Screen name="Home" component={LicenseOCR} />
+  <Stack.Screen name="LicenseOCR" component={LicenseOCR} />
   <Stack.Screen name="RouteSelectionScreen" component={RouteSelectionScreen} />
   <Stack.Screen name="TrackingScreen" component={TrackingScreen} />
   <Stack.Screen name="AddMotorScreen" component={AddMotorScreen} />
@@ -90,6 +92,7 @@ export default function SignedInStack() {
   <Stack.Screen name="addFuelLogScreen" component={AddFuelLogScreen} />
   <Stack.Screen name="addSavedDestinationScreen" component={addSavedDestinationScreen} />
   <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
+  <Stack.Screen name="allSavedDestinationScreen" component={allSavedDestinationScreen} />
   {/* 👆 Add these for Home navigation */}
     <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
   <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />

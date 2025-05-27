@@ -3,9 +3,12 @@ import { View, Alert, StyleSheet, Text } from "react-native";
 import { TextInput, Button } from "react-native-paper";
 import { LOCALHOST_IP } from "@env";
 
+
+
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+
 
   const handleRequestOtp = async () => {
     if (!email) return Alert.alert("Missing", "Please enter your email.");
@@ -17,6 +20,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+
 
       const data = await res.json();
       if (res.ok) {
@@ -38,7 +42,8 @@ export default function ForgotPasswordScreen({ navigation }) {
       <TextInput
         label="Email"
         value={email}
-        onChangeText={setEmail}
+        onBlur={() => validateEmail(email)}
+
         keyboardType="email-address"
         autoCapitalize="none"
         style={styles.input}
@@ -50,6 +55,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black", padding: 24, justifyContent: "center" },

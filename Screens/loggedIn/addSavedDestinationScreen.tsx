@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, Alert, ScrollView, Modal, TextInput
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  TextInput,
+  FlatList,
 } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,8 +32,10 @@ export default function GooglePlacesTestScreen() {
   const [editCategory, setEditCategory] = useState("");
 
   useEffect(() => {
-    fetchDestinations();
-  }, []);
+    if (user?._id) {
+      fetchDestinations();
+    }
+  }, [user]);
 
   const fetchDestinations = async () => {
     try {
@@ -39,6 +47,7 @@ export default function GooglePlacesTestScreen() {
   };
 
   const handleSave = async () => {
+    if (!user || !user._id) return Alert.alert("Error", "User not found.");
     if (!address || !coord) {
       return Alert.alert("Missing info", "Select a destination first.");
     }
@@ -57,7 +66,7 @@ export default function GooglePlacesTestScreen() {
       setCoord(null);
       fetchDestinations();
     } catch (error) {
-      console.error(error);
+      console.error(error.response?.data || error.message);
       Alert.alert("Error", "Failed to save destination.");
     }
   };
@@ -66,7 +75,9 @@ export default function GooglePlacesTestScreen() {
     Alert.alert("Confirm Delete", "Are you sure you want to delete this destination?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete", style: "destructive", onPress: async () => {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
           try {
             await axios.delete(`${API_URL}/${id}`);
             fetchDestinations();
@@ -74,8 +85,8 @@ export default function GooglePlacesTestScreen() {
             console.error("Delete error:", err);
             Alert.alert("Error", "Failed to delete.");
           }
-        }
-      }
+        },
+      },
     ]);
   };
 
@@ -100,8 +111,8 @@ export default function GooglePlacesTestScreen() {
     }
   };
 
-  return (
-    <ScrollView style={tw`flex-1 bg-white`} contentContainerStyle={tw`p-4 pt-10`}>
+  const renderHeader = () => (
+    <View style={tw`pt-10 px-4`}>
       <View style={tw`flex-row items-center mb-4`}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#000" />
@@ -113,6 +124,9 @@ export default function GooglePlacesTestScreen() {
         placeholder="Search a place..."
         fetchDetails={true}
         onPress={(data, details = null) => {
+          if (!details?.geometry?.location) {
+            return Alert.alert("Error", "Location details not found.");
+          }
           const loc = details.geometry.location;
           setAddress(data.description);
           setCoord({ latitude: loc.lat, longitude: loc.lng });
@@ -136,17 +150,29 @@ export default function GooglePlacesTestScreen() {
           <Text style={tw`text-gray-700 mb-2`}>Selected Address:</Text>
           <Text style={tw`text-base font-medium mb-4`}>{address}</Text>
           <TouchableOpacity onPress={handleSave} style={tw`bg-green-600 p-4 rounded-lg`}>
-            <Text style={tw`text-white text-center font-bold text-lg`}>Save Destination</Text>
+            <Text style={tw`text-white text-center font-bold text-lg`}>
+              Save Destination
+            </Text>
           </TouchableOpacity>
         </View>
       )}
 
       <Text style={tw`mt-8 text-xl font-semibold mb-2`}>Your Saved Destinations</Text>
-      {destinations.length === 0 ? (
+      {destinations.length === 0 && (
         <Text style={tw`text-gray-500`}>No destinations saved yet.</Text>
-      ) : (
-        destinations.map((item, index) => (
-          <View key={index} style={tw`mb-3 p-4 bg-gray-100 rounded-lg`}>
+      )}
+    </View>
+  );
+
+  return (
+    <>
+      <FlatList
+        data={destinations}
+        keyExtractor={(item) => item._id}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={tw`pb-20`}
+        renderItem={({ item }) => (
+          <View style={tw`mx-4 mb-3 p-4 bg-gray-100 rounded-lg`}>
             <Text style={tw`font-bold text-base text-gray-800`}>{item.label}</Text>
             <Text style={tw`text-sm text-gray-600`}>Category: {item.category}</Text>
             <Text style={tw`text-sm text-gray-600`}>
@@ -162,8 +188,8 @@ export default function GooglePlacesTestScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        ))
-      )}
+        )}
+      />
 
       {/* Edit Modal */}
       <Modal visible={editModal} transparent animationType="slide">
@@ -191,6 +217,6 @@ export default function GooglePlacesTestScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }

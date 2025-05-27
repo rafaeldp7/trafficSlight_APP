@@ -18,7 +18,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+import MapViewDirections from " ";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 import polyline from "@mapbox/polyline";

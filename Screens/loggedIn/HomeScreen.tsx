@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   LayoutAnimation,
   RefreshControl,
+  Image,
 } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
@@ -56,6 +57,23 @@ const renderItemLabel = (item: any, type: string) => {
   }
 };
 
+const getImageForSection = (title: string) => {
+  switch (title) {
+    case 'Your Motors':
+      return require('../../assets/icons/motor-silhouette.png');
+    case 'Your Trips':
+      return require('../../assets/icons/Trips.png');
+    case 'Traffic Reports':
+      return require('../../assets/icons/Reports.png');
+    case 'Saved Destinations':
+      return require('../../assets/icons/checkered-flag.jpg');
+    case 'Fuel Logs':
+      return require('../../assets/icons/gas_station-71.png');
+    default:
+      return require('../../assets/icons/default.png');
+  }
+};
+
 
 
 const Section: React.FC<SectionProps> = ({ title, data, navTarget, onAdd, icon }) => {
@@ -89,15 +107,21 @@ const Section: React.FC<SectionProps> = ({ title, data, navTarget, onAdd, icon }
           data={data.slice(0, 5)}
           keyExtractor={(item, index) => item._id || index.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.item}
-              onPress={() => navigation.navigate(navTarget, { item })}
-            >
-              <Text style={styles.itemText}>
-  {renderItemLabel(item, title)}
-</Text>
+<TouchableOpacity
+  style={styles.item}
+  onPress={() => navigation.navigate(navTarget, { item })}
+>
+  <Image
+  source={getImageForSection(title)}
+  style={styles.itemImage}
+  resizeMode="cover"
+/>
 
-            </TouchableOpacity>
+  <Text style={styles.itemText}>
+    {renderItemLabel(item, title)}
+  </Text>
+</TouchableOpacity>
+
           )}
           showsHorizontalScrollIndicator={false}
         />
@@ -185,7 +209,7 @@ export default function HomeScreen() {
       title: 'Saved Destinations',
       icon: 'location-outline',
       data: destinations,
-      navTarget: 'DestinationDetails',
+      navTarget: 'allSavedDestinationScreen',
       onAdd: () => navigation.navigate('addSavedDestinationScreen'),
     },
     {
@@ -199,19 +223,25 @@ export default function HomeScreen() {
 
   return (
     <FlatList
-      data={sections}
-      keyExtractor={(item) => item.title}
-      ListHeaderComponent={
-        <Text style={styles.greeting}>Welcome, {userName} 👋</Text>
-      }
-      renderItem={({ item }) => (
-        <Section
-          title={item.title}
-          data={item.data}
-          navTarget={item.navTarget}
-          onAdd={item.onAdd}
-          icon={item.icon}
-        />
+  data={sections}
+  keyExtractor={(item) => item.title}
+  ListHeaderComponent={
+    <View>
+      <Image
+        source={require('../../assets/logo_trafficSlight.png')}
+        style={{ width: "70%", height: 69, alignSelf: 'center', marginBottom: 20 }}
+      />
+      <Text style={styles.greeting}>Welcome, {userName} 👋</Text>
+    </View>
+  }
+  renderItem={({ item }) => (
+    <Section
+      title={item.title}
+      data={item.data}
+      navTarget={item.navTarget}
+      onAdd={item.onAdd}
+      icon={item.icon}
+    />
 
 
         
@@ -286,6 +316,14 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 14,
   },
+  itemImage: {
+  width: 60,
+  height: 60,
+  borderRadius: 8,
+  marginBottom: 6,
+  backgroundColor: '#ccc',
+},
+
   emptyText: {
     fontSize: 14,
     color: 'gray',

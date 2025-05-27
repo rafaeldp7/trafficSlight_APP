@@ -1,4 +1,3 @@
-// ✅ Final AddMotorScreen: Correct logic with model modal and FlatList for My Motors
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -10,7 +9,6 @@ import {
   ScrollView,
   Keyboard,
   ActivityIndicator,
-  FlatList,
   TouchableWithoutFeedback,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
@@ -29,6 +27,11 @@ export default function AddMotorScreen({ navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModelModal, setShowModelModal] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [showOdoModal, setShowOdoModal] = useState(false);
+  const [customModelName, setCustomModelName] = useState("");
+  const [odoStart, setOdoStart] = useState("");
+  const [odoEnd, setOdoEnd] = useState("");
+  const [litersAdded, setLitersAdded] = useState("");
   const [formInputs, setFormInputs] = useState({ motorName: "", plateNumber: "" });
   const [motorForm, setMotorForm] = useState({
     selectedMotor: null,
@@ -128,17 +131,8 @@ export default function AddMotorScreen({ navigation }) {
     }
   };
 
-  const handleEdit = (motor) => {
-    setMotorForm({
-      selectedMotor: motor.name,
-      fuelEfficiency: String(motor.fuelConsumption || ""),
-      editingId: motor._id,
-    });
-    setFormInputs({ motorName: motor.nickname, plateNumber: motor.plateNumber });
-  };
-
   const handleDelete = (id, nickname) => {
-    Alert.alert("Delete Motor", `Delete \"${nickname}\"?`, [
+    Alert.alert("Delete Motor", `Delete "${nickname}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -156,12 +150,6 @@ export default function AddMotorScreen({ navigation }) {
       },
     ]);
   };
-
-  const filteredMotors = motorList.filter((motor) =>
-    motor.nickname?.toLowerCase().includes(search.toLowerCase()) ||
-    motor.plateNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    motor.name?.toLowerCase().includes(search.toLowerCase()) 
-  );
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -202,60 +190,45 @@ export default function AddMotorScreen({ navigation }) {
             style={tw`border border-gray-300 rounded-lg p-3 mb-4`}
           />
 
-          <View style={tw`mb-4`}>
-            <Text style={tw`text-lg font-semibold mb-1`}>Fuel Efficiency (km/L)</Text>
-            <View style={tw`border border-gray-300 rounded-lg p-3 bg-gray-100`}>
-              <Text style={tw`text-gray-500`}>
-                {motorForm.fuelEfficiency ? `${motorForm.fuelEfficiency} km/L` : 'Not set'}
-              </Text>
-            </View>
+          <Text style={tw`text-lg font-semibold mb-1`}>Fuel Efficiency (km/L)</Text>
+          <View style={tw`border border-gray-300 rounded-lg p-3 bg-gray-100`}>
+            <Text style={tw`text-gray-500`}>
+              {motorForm.fuelEfficiency ? `${motorForm.fuelEfficiency} km/L` : "Not set"}
+            </Text>
           </View>
 
           <TouchableOpacity
             onPress={handleSave}
             disabled={isSubmitting}
-            style={tw`bg-blue-600 p-4 rounded-lg items-center mt-2`}
+            style={tw`bg-blue-600 p-4 rounded-lg items-center mt-4`}
           >
             <Text style={tw`text-white font-bold`}>
               {isSubmitting ? "Processing..." : motorForm.editingId ? "Update Motor" : "Save Motor"}
             </Text>
           </TouchableOpacity>
 
-          {motorForm.editingId && (
-            <TouchableOpacity
-              style={tw`bg-orange-500 p-3 rounded-lg items-center mt-2`}
-              onPress={() =>
-                Alert.alert("Cancel Edit", "Discard changes?", [
-                  { text: "No", style: "cancel" },
-                  { text: "Yes", onPress: resetForm },
-                ])
-              }
-            >
-              <Text style={tw`text-white`}>Cancel Edit</Text>
-            </TouchableOpacity>
-          )}
-
           <Text style={tw`text-xl font-bold mt-6 mb-2`}>My Motors</Text>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search..."
-            style={tw`border border-gray-300 rounded-lg p-3 mb-4`}
-          />
 
           {loading ? (
             <ActivityIndicator size="large" color="#3b82f6" />
           ) : (
-            filteredMotors.map((item) => (
+            motorList.map((item) => (
               <View key={item._id} style={tw`border p-4 rounded-lg mb-3 bg-white shadow-sm`}>
                 <Text style={tw`font-bold text-lg text-blue-800`}>{item.nickname}</Text>
                 <Text style={tw`text-gray-600`}>Model: {item.name}</Text>
                 <Text style={tw`text-gray-600`}>Plate: {item.plateNumber}</Text>
                 <Text style={tw`text-gray-600`}>
-                  Fuel Efficiency: {typeof item.fuelEfficiency === "number" ? `${item.fuelEfficiency} km/L` : "N/A"}
+                  Fuel Efficiency: {item.fuelEfficiency ? `${item.fuelEfficiency} km/L` : "N/A"}
                 </Text>
                 <View style={tw`flex-row justify-end mt-2`}>
-                  <TouchableOpacity style={tw`mr-4`} onPress={() => handleEdit(item)}>
+                  <TouchableOpacity style={tw`mr-4`} onPress={() => {
+                    setMotorForm({
+                      selectedMotor: item.name,
+                      fuelEfficiency: String(item.fuelEfficiency || ""),
+                      editingId: item._id,
+                    });
+                    setFormInputs({ motorName: item.nickname, plateNumber: item.plateNumber });
+                  }}>
                     <Ionicons name="create-outline" size={22} color="#3b82f6" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(item._id, item.nickname)}>
@@ -268,7 +241,7 @@ export default function AddMotorScreen({ navigation }) {
         </ScrollView>
 
         {showModelModal && (
-          <View style={tw`absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 justify-center items-center z-50`}>
+          <View style={tw`absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 justify-center items-center`}>
             <View style={tw`w-11/12 max-h-[80%] bg-white rounded-lg p-4`}>
               <TextInput
                 placeholder="Search model..."
@@ -284,7 +257,7 @@ export default function AddMotorScreen({ navigation }) {
                       key={item.value}
                       onPress={() => {
                         handleFormChange("selectedMotor", item.value);
-                        handleFormChange("fuelEfficiency", fuelMap[item.value] ? String(fuelMap[item.value]) : "");
+                        handleFormChange("fuelEfficiency", fuelMap[item.value] || "");
                         setShowModelModal(false);
                       }}
                       style={tw`p-3 border-b border-gray-200`}
@@ -294,8 +267,95 @@ export default function AddMotorScreen({ navigation }) {
                   ))}
               </ScrollView>
               <TouchableOpacity
+                onPress={() => {
+                  setShowModelModal(false);
+                  setTimeout(() => setShowOdoModal(true), 100);
+                }}
+                style={tw`mt-4 bg-blue-500 p-3 rounded-lg items-center`}
+              >
+                <Text style={tw`text-white font-bold`}>+ Create New Model</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 onPress={() => setShowModelModal(false)}
-                style={tw`mt-4 bg-red-500 p-2 rounded-lg items-center`}
+                style={tw`mt-3 bg-gray-400 p-2 rounded-lg items-center`}
+              >
+                <Text style={tw`text-white`}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Odometer-based Custom Model Modal */}
+        {showOdoModal && (
+          <View style={tw`absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 justify-center items-center`}>
+            <View style={tw`w-11/12 bg-white rounded-lg p-4`}>
+              <Text style={tw`text-lg font-bold mb-3`}>Add Custom Motorcycle Model</Text>
+              <TextInput
+                placeholder="Model Name"
+                value={customModelName}
+                onChangeText={setCustomModelName}
+                style={tw`border border-gray-300 rounded-lg p-2 mb-2`}
+              />
+              <TextInput
+                placeholder="First Odometer Reading"
+                keyboardType="numeric"
+                value={odoStart}
+                onChangeText={setOdoStart}
+                style={tw`border border-gray-300 rounded-lg p-2 mb-2`}
+              />
+              <TextInput
+                placeholder="Latest Odometer Reading"
+                keyboardType="numeric"
+                value={odoEnd}
+                onChangeText={setOdoEnd}
+                style={tw`border border-gray-300 rounded-lg p-2 mb-2`}
+              />
+              <TextInput
+                placeholder="Fuel Gained (Liters)"
+                keyboardType="numeric"
+                value={litersAdded}
+                onChangeText={setLitersAdded}
+                style={tw`border border-gray-300 rounded-lg p-2 mb-4`}
+              />
+              <TouchableOpacity
+                onPress={async () => {
+                  const distance = parseFloat(odoEnd) - parseFloat(odoStart);
+                  const liters = parseFloat(litersAdded);
+                  if (!customModelName || distance <= 0 || liters <= 0) {
+                    return Alert.alert("Error", "Invalid input values.");
+                  }
+                  const efficiency = distance / liters;
+                  try {
+                    const res = await fetch(`${LOCALHOST_IP}/api/motorcycles`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        model: customModelName,
+                        fuelConsumption: parseFloat(efficiency.toFixed(2)),
+                        engineDisplacement: 110,
+                        power: "Custom",
+                      }),
+                    });
+                    if (!res.ok) throw new Error();
+                    await fetchMotorModels();
+                    handleFormChange("selectedMotor", customModelName);
+                    handleFormChange("fuelEfficiency", efficiency.toFixed(2));
+                    setShowOdoModal(false);
+                    setCustomModelName("");
+                    setOdoStart("");
+                    setOdoEnd("");
+                    setLitersAdded("");
+                  } catch {
+                    Alert.alert("Error", "Failed to save model.");
+                  }
+                }}
+                style={tw`bg-green-600 p-3 rounded-lg items-center`}
+              >
+                <Text style={tw`text-white font-bold`}>Save Model</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowOdoModal(false)}
+                style={tw`mt-3 bg-gray-400 p-2 rounded-lg items-center`}
               >
                 <Text style={tw`text-white`}>Cancel</Text>
               </TouchableOpacity>

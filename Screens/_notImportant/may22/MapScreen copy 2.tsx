@@ -18,7 +18,7 @@ import {
   Alert,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import MapViewDirections from "react-native-maps-directions";
+import MapViewDirections from " ";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import * as Location from "expo-location";

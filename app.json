@@ -7,7 +7,11 @@
     "orientation": "portrait",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "splash": {
       "image": "./assets/logo.png",
       "resizeMode": "contain",
@@ -22,7 +26,11 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#000000"
       },
-      "permissions": ["ACCESS_FINE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyAzFeqvqzZUO9kfLVZZOrlOwP5Fg4LpLf4"
@@ -32,11 +40,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "7760c954-e857-4a7e-ad55-620044f00fa4"
-      }
-    },
     "plugins": [
       [
         "expo-location",
@@ -45,7 +48,12 @@
           "locationWhenInUsePermission": "Allow TrafficSlight to access your location while using the app."
         }
       ]
-      
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5ad3f9d7-c99a-48ad-8781-81d44079507e"
+      }
+    },
+    "owner": "rafaeldp0721"
   }
 }

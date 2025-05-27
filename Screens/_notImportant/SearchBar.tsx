@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Image,
 } from "react-native";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 import { GOOGLE_MAPS_API_KEY } from "@env";
@@ -26,7 +27,7 @@ type SearchBarProps = {
   animateToRegion: (region: any) => void;
   selectedMotor: { name: string; fuelEfficiency: number } | null;
   setSelectedMotor: (motor: { name: string; fuelEfficiency: number } | null) => void;
-  motorList: { name: string; fuelEfficiency: number }[];
+  motorList: { name: string; fuelEfficiency: number;  }[];
   onPlaceSelectedCloseModal: () => void;
   userId: string; // added prop
 };
@@ -48,22 +49,27 @@ const SearchBar = ({
   const [savedLocations, setSavedLocations] = useState([]);
 
   useEffect(() => {
-    const fetchSaved = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/${userId}`);
-        const mapped = res.data.map((loc) => ({
-          latitude: loc.location.latitude,
-          longitude: loc.location.longitude,
-          address: loc.label,
-        }));
-        setSavedLocations(mapped);
-      } catch (err) {
-        console.error("Failed to fetch saved destinations:", err);
-      }
-    };
+  const fetchSaved = async () => {
+    try {
+      const response = await axios.get(
+        `https://ts-backend-1-jyit.onrender.com/api/saved-destinations/${userId}`
+      );
+      const mapped = response.data.map((loc: any) => ({
+        latitude: loc.location.latitude,
+        longitude: loc.location.longitude,
+        address: loc.label,
+      }));
+      setSavedLocations(mapped);
+    } catch (error) {
+      console.error("❌ Failed to fetch saved destinations:", error);
+    }
+  };
 
-    if (userId) fetchSaved();
-  }, [userId]);
+  if (userId) {
+    fetchSaved();
+  }
+}, [userId]);
+
 
   const handlePlaceSelect = (place: {
     address: string;
@@ -87,29 +93,53 @@ const SearchBar = ({
         {motorList.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {motorList.map((motor, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => setSelectedMotor(motor)}
-                style={{
-                  backgroundColor:
-                    selectedMotor?.name === motor.name ? "#3498db" : "#ecf0f1",
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 10,
-                  marginRight: 8,
-                  marginLeft: 10,
-                  width: 130,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 17,
-                    color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50",
-                  }}
-                >
-                  {motor.name} ({motor.fuelEfficiency} km/L)
-                </Text>
-              </TouchableOpacity>
+<TouchableOpacity
+  key={index}
+  onPress={() => setSelectedMotor(motor)}
+  style={{
+    backgroundColor: selectedMotor?.name === motor.name ? "#3498db" : "#ecf0f1",
+    padding: 10,
+    borderRadius: 10,
+    marginRight: 8,
+    marginLeft: 10,
+    width: 150,
+    alignItems: "center",
+  }}
+>
+  {/* Image */}
+  <Image
+    source={require('../../assets/icons/motor-silhouette.png')}
+    style={{
+      width: 50,
+      height: 50,
+      borderRadius: 25,
+      marginBottom: 6,
+      borderWidth: 2,
+      borderColor: selectedMotor?.name === motor.name ? "#fff" : "#bdc3c7",
+    }}
+    resizeMode="cover"
+  />
+
+  {/* Text */}
+  <Text
+    style={{
+      fontSize: 15,
+      textAlign: "center",
+      color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50",
+    }}
+  >
+    {motor.name}
+  </Text>
+  <Text
+    style={{
+      fontSize: 13,
+      color: selectedMotor?.name === motor.name ? "#ecf0f1" : "#7f8c8d",
+    }}
+  >
+    {motor.fuelEfficiency} km/L
+  </Text>
+</TouchableOpacity>
+
             ))}
           </ScrollView>
         ) : (
