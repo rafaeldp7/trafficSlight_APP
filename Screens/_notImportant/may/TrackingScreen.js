@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { View, Text, Alert, Modal, TouchableOpacity } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
-import { checkReroute } from "../../utils/archived/reroute";
-import { getNewRoute } from "../../utils/archived/directions";
+import { checkReroute } from "../../../utils/archived/reroute";
+import { getNewRoute } from "../../../utils/archived/directions";
 import { useTailwind } from "tailwind-rn";
 
 export default function TrackingScreen({ route }) {

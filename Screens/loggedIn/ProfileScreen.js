@@ -13,7 +13,7 @@ const scaleFont = (size) => size * fontScale;
 const iconSize = 34;
 
 const ProfileScreen = ({ navigation }) => {
-  const { user } = useUser();
+  const { user ,clearUser} = useUser();
   if (!user) {
 
     <View style={tw`flex-1 justify-center items-center`}>
@@ -29,7 +29,10 @@ const ProfileScreen = ({ navigation }) => {
       "Are you sure you want to log out?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout", onPress: logout, style: "destructive" },
+        { text: "Logout",  onPress: async () => {
+          await logout();     // clears token
+          await clearUser();  // clears user info
+        }, style: "destructive" },
       ],
       { cancelable: true }
     );

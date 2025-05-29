@@ -20,8 +20,8 @@ import { useUser } from "../../../AuthContext/UserContext";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
 
 import MapComponent from "../may22/MapComponent";
-import Controls from "../Controls";
-import SearchBar from "../SearchBar";
+import Controls from "./Controls";
+import SearchBar from "../../loggedIn/SearchBar";
 import RouteDetailsBottomSheet from "../may22/RouteDetailsBottomSheet";
 import TripSummaryModal from "../may22/TripSummaryModal";
 import useLocationTracker from "../hooks/useLocationTracker";

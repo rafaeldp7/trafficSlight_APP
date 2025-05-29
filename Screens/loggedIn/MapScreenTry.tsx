@@ -23,7 +23,7 @@ import polyline from "@mapbox/polyline";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
 import { useUser } from "../../AuthContext/UserContext";
 
-import SearchBar from "../_notImportant/SearchBar";
+import SearchBar from "./SearchBar";
 import "react-native-get-random-values";
 
 
@@ -560,6 +560,7 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
     console.log("🛰️ Fetching routes from Google Directions API...");
 
     try {
+      console.log(`https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`);
       const res = await fetch(
         `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
       );
@@ -647,14 +648,14 @@ const endNavigation = useCallback(async (arrived: boolean = false) => {
   const durationInMinutes =
     tripStartTime ? Math.round((Date.now() - tripStartTime) / 60000) : 0;
 
-const actualDistance = selectedRoute ? calculateTotalPathDistance(pathCoords) : 0;
-const estimatedFuel = selectedRoute && selectedMotor
-  ? calculateFuelRange(selectedRoute.distance / 1000, selectedMotor.fuelEfficiency)
-  : { min: 0, max: 0, avg: 0 };
-const actualFuel = selectedMotor
-  ? calculateFuelRange(actualDistance, selectedMotor.fuelEfficiency)
-  : { min: 0, max: 0, avg: 0 };
+  const actualDistance = calculateTotalPathDistance(pathCoords);
 
+  const estimatedFuel = calculateFuelRange(
+    selectedRoute.distance / 1000,
+    selectedMotor.fuelEfficiency
+  );
+
+  const actualFuel = calculateFuelRange(actualDistance, selectedMotor.fuelEfficiency);
 
   const summary: TripSummary = {
     userId: user._id,
@@ -680,6 +681,7 @@ const actualFuel = selectedMotor
     actualFuel,
     actualDistance,
     pathCoords,
+    plannedCoords: selectedRoute.coordinates, // ✅ added this
     wasRerouted,
     durationInMinutes,
   });
@@ -700,6 +702,7 @@ const actualFuel = selectedMotor
 
 
 
+
 const actualDistance = selectedRoute ? calculateTotalPathDistance(pathCoords) : 0;
 const estimatedFuel = selectedRoute && selectedMotor
   ? calculateFuelRange(selectedRoute.distance / 1000, selectedMotor.fuelEfficiency)
@@ -711,6 +714,54 @@ const actualFuel = selectedMotor
 
 
 // 💾 Save trip summary to backend
+// const saveTripSummaryToBackend = async (
+//   summary: TripSummary,
+//   arrived: boolean,
+//   extras: {
+//     startAddress?: string;
+//     estimatedFuel: { min: number; max: number };
+//     actualFuel: { min: number; max: number };
+//     actualDistance: number;
+//     pathCoords: LocationCoords[];
+//     wasRerouted: boolean;
+//     durationInMinutes: number;
+//   }
+// ) => {
+//   try {
+//     await fetch(`${LOCALHOST_IP}/api/trips/`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({
+//         ...summary,
+//         startAddress: extras.startAddress,
+//         fuelUsedMin: extras.estimatedFuel.min,
+//         fuelUsedMax: extras.estimatedFuel.max,
+//         actualDistance: extras.actualDistance,
+//         actualFuelUsedMin: extras.actualFuel.min,
+//         actualFuelUsedMax: extras.actualFuel.max,
+//         startLocation: {
+//           lat: extras.pathCoords[0]?.latitude,
+//           lng: extras.pathCoords[0]?.longitude,
+//         },
+//         endLocation: {
+//           lat: extras.pathCoords[extras.pathCoords.length - 1]?.latitude,
+//           lng: extras.pathCoords[extras.pathCoords.length - 1]?.longitude,
+//         },
+//         plannedPolyline: polyline.encode(selectedRoute.coordinates),
+//         actualPolyline: polyline.encode(extras.pathCoords),
+//         wasRerouted: extras.wasRerouted,
+//         isSuccessful: arrived,
+//         status: arrived ? "completed" : "cancelled",
+//         durationInMinutes: extras.durationInMinutes,
+//       }),
+//     });
+
+//     console.log("Trip summary saved successfully");
+//   } catch (err) {
+//     console.error("Error saving trip:", err);
+//   }
+// };
+
 const saveTripSummaryToBackend = async (
   summary: TripSummary,
   arrived: boolean,
@@ -719,7 +770,9 @@ const saveTripSummaryToBackend = async (
     estimatedFuel: { min: number; max: number };
     actualFuel: { min: number; max: number };
     actualDistance: number;
+    actualFuel: { min: number; max: number };
     pathCoords: LocationCoords[];
+    plannedCoords: LocationCoords[]; // ✅ Add this
     wasRerouted: boolean;
     durationInMinutes: number;
   }
@@ -733,9 +786,9 @@ const saveTripSummaryToBackend = async (
         startAddress: extras.startAddress,
         fuelUsedMin: extras.estimatedFuel.min,
         fuelUsedMax: extras.estimatedFuel.max,
-        actualDistance: extras.actualDistance,
         actualFuelUsedMin: extras.actualFuel.min,
         actualFuelUsedMax: extras.actualFuel.max,
+        actualDistance: extras.actualDistance,
         startLocation: {
           lat: extras.pathCoords[0]?.latitude,
           lng: extras.pathCoords[0]?.longitude,
@@ -744,7 +797,7 @@ const saveTripSummaryToBackend = async (
           lat: extras.pathCoords[extras.pathCoords.length - 1]?.latitude,
           lng: extras.pathCoords[extras.pathCoords.length - 1]?.longitude,
         },
-        plannedPolyline: polyline.encode(selectedRoute.coordinates),
+        plannedPolyline: polyline.encode(extras.plannedCoords), // ✅ safer now
         actualPolyline: polyline.encode(extras.pathCoords),
         wasRerouted: extras.wasRerouted,
         isSuccessful: arrived,
@@ -753,11 +806,13 @@ const saveTripSummaryToBackend = async (
       }),
     });
 
-    console.log("Trip summary saved successfully");
+    console.log("✅ Trip summary saved successfully");
   } catch (err) {
-    console.error("Error saving trip:", err);
+    console.error("🔥 Error saving trip:", err);
   }
 };
+
+
 
 
   // 🌐 Loading States

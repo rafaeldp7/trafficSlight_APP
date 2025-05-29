@@ -7,7 +7,7 @@ import {
 import Ionicons from "react-native-vector-icons/Ionicons";
 import tw from "twrnc";
 import { LOCALHOST_IP } from "@env";
-import { useUser } from "../../AuthContext/UserContext";
+import { useUser } from "../../../AuthContext/UserContext";
 
 export default function AddMotorScreen({ navigation }) {
   const { user } = useUser();

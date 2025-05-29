@@ -1,12 +1,12 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import LoginScreen from "../Screens/LoginScreen";
-import RegisterScreen from "../Screens/RegisterScreen";
-import IndexScreen from "../Screens/IndexScreen";
-import VerifyOtpScreen from "../Screens/VerifyOtpScreen";
-import ForgotPasswordScreen from "../Screens/ForgotPasswordScreen";
-import ResetOtpScreen from "../Screens/ResetOtpScreen";
-import NewPasswordScreen from "../Screens/NewPasswordScreen";
+import LoginScreen from "../Screens/ACCOUNT_AUTH/LoginScreen";
+import RegisterScreen from "../Screens/ACCOUNT_AUTH/RegisterScreen";
+import IndexScreen from "../Screens/ACCOUNT_AUTH/IndexScreen";
+import VerifyOtpScreen from "../Screens/ACCOUNT_AUTH/VerifyOtpScreen";
+import ForgotPasswordScreen from "../Screens/ACCOUNT_AUTH/ForgotPasswordScreen";
+import ResetOtpScreen from "../Screens/ACCOUNT_AUTH/ResetOtpScreen";
+import NewPasswordScreen from "../Screens/ACCOUNT_AUTH/NewPasswordScreen";
 
 
 const Stack = createStackNavigator();

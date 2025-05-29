@@ -32,7 +32,7 @@ export default function AddMotorScreen({ navigation }) {
   const [odoStart, setOdoStart] = useState("");
   const [odoEnd, setOdoEnd] = useState("");
   const [litersAdded, setLitersAdded] = useState("");
-  const [formInputs, setFormInputs] = useState({ motorName: "", plateNumber: "" });
+  const [formInputs, setFormInputs] = useState({ motorName: "" });
   const [motorForm, setMotorForm] = useState({
     selectedMotor: null,
     fuelEfficiency: "",
@@ -45,7 +45,7 @@ export default function AddMotorScreen({ navigation }) {
 
   const resetForm = () => {
     setMotorForm({ selectedMotor: null, fuelEfficiency: "", editingId: null });
-    setFormInputs({ motorName: "", plateNumber: "" });
+    setFormInputs({ motorName: "" });
   };
 
   const fetchMotorModels = useCallback(async () => {
@@ -82,6 +82,7 @@ export default function AddMotorScreen({ navigation }) {
 
   useEffect(() => { fetchMotorModels(); }, [fetchMotorModels]);
   useEffect(() => { if (user?._id) fetchUserMotors(); }, [user, fetchUserMotors]);
+
   useEffect(() => {
     if (motorForm.selectedMotor && fuelMap[motorForm.selectedMotor]) {
       handleFormChange("fuelEfficiency", String(fuelMap[motorForm.selectedMotor]));
@@ -91,45 +92,50 @@ export default function AddMotorScreen({ navigation }) {
   }, [motorForm.selectedMotor, fuelMap]);
 
   const validateForm = () => {
-    const plate = formInputs.plateNumber.trim().toUpperCase();
-    const nickname = formInputs.motorName.trim();
-    if (!nickname) return Alert.alert("Error", "Enter motor nickname.");
+    
+    
     if (!motorForm.selectedMotor) return Alert.alert("Error", "Select a motorcycle model.");
-    if (!plate) return Alert.alert("Error", "Enter a plate number.");
-    const duplicate = motorList.find((m) => m.plateNumber.trim().toUpperCase() === plate && m._id !== motorForm.editingId);
-    if (duplicate) return Alert.alert("Error", "Plate number already registered.");
     return true;
   };
 
-  const handleSave = async () => {
-    if (!validateForm() || !user?._id) return;
-    setIsSubmitting(true);
-    try {
-      const motorcycleId = motorIdMap[motorForm.selectedMotor];
-      const endpoint = motorForm.editingId
-        ? `${LOCALHOST_IP}/api/user-motors/user/${motorForm.editingId}`
-        : `${LOCALHOST_IP}/api/user-motors/`;
-      const method = motorForm.editingId ? "PUT" : "POST";
-      const res = await fetch(endpoint, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user._id,
-          motorcycleId,
-          plateNumber: formInputs.plateNumber.trim().toUpperCase(),
-          nickname: formInputs.motorName.trim(),
-        }),
-      });
-      if (!res.ok) throw new Error();
-      Alert.alert("Success", motorForm.editingId ? "Motor updated!" : "Motor added!");
-      resetForm();
-      fetchUserMotors();
-    } catch {
-      Alert.alert("Error", "Something went wrong while saving.");
-    } finally {
-      setIsSubmitting(false);
+const handleSave = async () => {
+  if (!validateForm() || !user?._id) return;
+  setIsSubmitting(true);
+  try {
+    const motorcycleId = motorIdMap[motorForm.selectedMotor];
+    const endpoint = motorForm.editingId
+      ? `${LOCALHOST_IP}/api/user-motors/${motorForm.editingId}`
+      : `${LOCALHOST_IP}/api/user-motors/`;
+    const method = motorForm.editingId ? "PUT" : "POST";
+
+    const res = await fetch(endpoint, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user._id,
+        motorcycleId,
+        nickname: formInputs.motorName.trim(),
+      }),
+    });
+
+    const resData = await res.json();
+
+    if (!res.ok) {
+      console.log("❌ Save failed response:", resData);
+      throw new Error(resData?.msg || "Request failed.");
     }
-  };
+
+    Alert.alert("Success", motorForm.editingId ? "Motor updated!" : "Motor added!");
+    resetForm();
+    fetchUserMotors();
+  } catch (err) {
+    console.error("❌ Save Error:", err.message);
+    Alert.alert("Error", err.message || "Something went wrong while saving.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleDelete = (id, nickname) => {
     Alert.alert("Delete Motor", `Delete "${nickname}"?`, [
@@ -152,7 +158,7 @@ export default function AddMotorScreen({ navigation }) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={tw`flex-1 bg-gray-50`}>
         <View style={tw`px-5 py-4 pt-10 border-b border-gray-200 flex-row items-center bg-white`}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -182,14 +188,6 @@ export default function AddMotorScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <Text style={tw`text-lg font-semibold mb-1`}>Plate Number</Text>
-          <TextInput
-            value={formInputs.plateNumber}
-            onChangeText={(v) => setFormInputs((prev) => ({ ...prev, plateNumber: v }))}
-            autoCapitalize="characters"
-            style={tw`border border-gray-300 rounded-lg p-3 mb-4`}
-          />
-
           <Text style={tw`text-lg font-semibold mb-1`}>Fuel Efficiency (km/L)</Text>
           <View style={tw`border border-gray-300 rounded-lg p-3 bg-gray-100`}>
             <Text style={tw`text-gray-500`}>
@@ -216,19 +214,21 @@ export default function AddMotorScreen({ navigation }) {
               <View key={item._id} style={tw`border p-4 rounded-lg mb-3 bg-white shadow-sm`}>
                 <Text style={tw`font-bold text-lg text-blue-800`}>{item.nickname}</Text>
                 <Text style={tw`text-gray-600`}>Model: {item.name}</Text>
-                <Text style={tw`text-gray-600`}>Plate: {item.plateNumber}</Text>
                 <Text style={tw`text-gray-600`}>
                   Fuel Efficiency: {item.fuelEfficiency ? `${item.fuelEfficiency} km/L` : "N/A"}
                 </Text>
                 <View style={tw`flex-row justify-end mt-2`}>
-                  <TouchableOpacity style={tw`mr-4`} onPress={() => {
-                    setMotorForm({
-                      selectedMotor: item.name,
-                      fuelEfficiency: String(item.fuelEfficiency || ""),
-                      editingId: item._id,
-                    });
-                    setFormInputs({ motorName: item.nickname, plateNumber: item.plateNumber });
-                  }}>
+                  <TouchableOpacity
+                    style={tw`mr-4`}
+                    onPress={() => {
+                      setMotorForm({
+                        selectedMotor: item.name,
+                        fuelEfficiency: String(item.fuelEfficiency || ""),
+                        editingId: item._id,
+                      });
+                      setFormInputs({ motorName: item.nickname });
+                    }}
+                  >
                     <Ionicons name="create-outline" size={22} color="#3b82f6" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDelete(item._id, item.nickname)}>
@@ -240,6 +240,7 @@ export default function AddMotorScreen({ navigation }) {
           )}
         </ScrollView>
 
+        {/* Modal for selecting or creating new model */}
         {showModelModal && (
           <View style={tw`absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 justify-center items-center`}>
             <View style={tw`w-11/12 max-h-[80%] bg-white rounded-lg p-4`}>
@@ -285,7 +286,7 @@ export default function AddMotorScreen({ navigation }) {
           </View>
         )}
 
-        {/* Odometer-based Custom Model Modal */}
+        {/* Custom Model Creation Modal */}
         {showOdoModal && (
           <View style={tw`absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 justify-center items-center`}>
             <View style={tw`w-11/12 bg-white rounded-lg p-4`}>

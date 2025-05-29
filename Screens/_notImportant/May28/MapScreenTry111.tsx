@@ -20,12 +20,12 @@ import * as FileSystem from "expo-file-system";
 import * as Speech from "expo-speech";
 import polyline from "@mapbox/polyline";
 import { GOOGLE_MAPS_API_KEY, LOCALHOST_IP } from "@env";
-import { useUser } from "../../AuthContext/UserContext";
-import RouteDetailsBottomSheet from "../../components/RouteDetailsDrawer";
+import { useUser } from "../../../AuthContext/UserContext";
+import RouteDetailsBottomSheet from "../../../components/RouteDetailsDrawer";
 import TrafficIncidentMarker from "./MapScreen/TrafficIncidentMarker";
 import SearchDestinationModal from "./MapScreen/SearchDestinationModal";
 import TripSummaryModal from "./MapScreen/TripSummaryModal";
-import SearchBar from "../_notImportant/SearchBar";
+import SearchBar from "../../loggedIn/SearchBar";
 import "react-native-get-random-values";
 import { LocationObject } from "expo-location";
 // ----------------------------------------------------------------

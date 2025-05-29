@@ -112,7 +112,7 @@ const [email, setEmail] = useState(route.params?.email || "");
   return (
     <View style={styles.container}>
       <Image
-        source={require("../assets/logo.png")}
+        source={require("../../assets/logo.png")}
         style={{ width: 100, height: 100, alignSelf: "center", marginBottom: 20 }}
       />
       <Text style={styles.title}>Verify your Email</Text>

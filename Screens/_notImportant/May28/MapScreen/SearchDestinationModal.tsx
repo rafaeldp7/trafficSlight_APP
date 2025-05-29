@@ -2,7 +2,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, Modal, StyleSheet } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-import SearchBar from "../../_notImportant/SearchBar"; // adjust path if needed
+import SearchBar from "../../../loggedIn/SearchBar"; // adjust path if needed
 
 export default function SearchDestinationModal({
   visible,

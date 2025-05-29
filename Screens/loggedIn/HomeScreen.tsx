@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
   Image,
 } from 'react-native';
 import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useUser } from '../../AuthContext/UserContext';
+import * as Location from "expo-location";
 
 const API_BASE = 'https://ts-backend-1-jyit.onrender.com';
 
@@ -27,44 +28,94 @@ type RootStackParamList = {
   FuelCalculator: undefined;
   AddMotorScreen: undefined;
   AddFuelLogScreen: undefined;
-  AddDestinationScreen: undefined;
+  AddSavedDestinationScreen: undefined;
 };
 
 type SectionProps = {
   title: string;
+  subtitle?: string;
+  text?: string;
   data: any[];
   navTarget: keyof RootStackParamList;
   onAdd?: () => void;
   icon?: string;
 };
 
+
+
 const renderItemLabel = (item: any, type: string) => {
   switch (type) {
-    case 'Your Motors':
-      return item.nickname || item.motorcycleId?.model || 'Motor';
-    case 'Your Trips':
-      return item.origin ? `${item.origin} ➜ ${item.destination}` : 'Trip';
+    case 'My Motors':
+      return {
+        line1: item.name || 'Motorcycle',
+        line2: `${item.fuelEfficiency} km/L` || 'Fuel Efficiency Unknown',
+        line3: item.nickname || 'Nickname Unknown',
+      };
+    case 'My Trips':
+      return {
+        line1: `${item.origin || 'Start'} → ${item.destination || 'End'}`,
+        line2: `Distance: ${item.distance?.toFixed(1) || '--'} km`,
+        line3: `ETA: ${item.eta || '--'}`,
+      };
     case 'Traffic Reports':
-      return item.reportType || 'Alert';
+      return {
+        line1: item.reportType || 'Alert',
+        line2: item.description || 'No description',
+        line3: new Date(item.timestamp).toLocaleString("en-PH", {
+  hour: "2-digit",
+  minute: "2-digit",
+  
+  hour12: true,
+  month: "long",
+  day: "numeric",
+
+})
+
+
+
+      };
     case 'Saved Destinations':
-      return item.label || item.address || 'Destination';
+      return {
+        line1: item.label || 'Saved Place',
+        line2: item.address || 'No address',
+        line3: '',
+      };
     case 'Fuel Logs':
-      return item.totalCost && item.liters
-        ? `₱${item.totalCost.toFixed(2)} • ${item.liters.toFixed(1)}L`
-        : 'Fuel Log';
+      return {
+        line1: `₱${item.totalCost?.toFixed(2) || '--'}`,
+        line2: `${item.liters?.toFixed(1) || '--'} Liters`,
+        line3: `@ ₱${item.pricePerLiter?.toFixed(2) || '--'}/L`,
+      };
+      case 'Nearby Gas Stations':
+  return {
+    line1: item.name || 'Unnamed Station',
+    line2: `${item.brand || 'Brand Unknown'} • ₱${item.fuelPrices?.gasoline || '--'} (Gasoline)`,
+    line3: item.address?.street || 'No address',
+  };
+
     default:
-      return 'View';
+      return {
+        line1: 'Item',
+        line2: '',
+        line3: '',
+      };
   }
 };
 
-const getImageForSection = (title: string) => {
+
+const getImageForSection = (title: string, description: string) => {
   switch (title) {
-    case 'Your Motors':
+    case 'My Motors':
       return require('../../assets/icons/motor-silhouette.png');
-    case 'Your Trips':
+    case 'My Trips':
       return require('../../assets/icons/Trips.png');
     case 'Traffic Reports':
-      return require('../../assets/icons/Reports.png');
+      switch (description) {
+        case 'Accident':
+          return require('../../assets/icons/ROAD INCIDENTS ICON/Hazard.png')
+
+      }
+
     case 'Saved Destinations':
       return require('../../assets/icons/checkered-flag.jpg');
     case 'Fuel Logs':
@@ -74,19 +125,31 @@ const getImageForSection = (title: string) => {
   }
 };
 
+const getCurrentLocation = async () => {
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== "granted") {
+    throw new Error("Permission to access location was denied");
+  }
 
+  const location = await Location.getCurrentPositionAsync({});
+  return location.coords;
+};
 
-const Section: React.FC<SectionProps> = ({ title, data, navTarget, onAdd, icon }) => {
+const Section: React.FC<SectionProps> = ({ title, subtitle, text, data, navTarget, onAdd, icon }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>
-          {icon && <Ionicons name={icon as any} size={20} />} {title}
-        </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.sectionTitle}>
+            {icon && <Ionicons name={icon as any} size={20} />} {title}
+          </Text>
+          {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+          {text && <Text style={styles.sectionText}>{text}</Text>}
+        </View>
         <View style={styles.headerActions}>
-          {data.length > 5 && (
+          {data.length > 2 && (
             <TouchableOpacity onPress={() => navigation.navigate(navTarget, { fullList: data })}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
@@ -106,35 +169,37 @@ const Section: React.FC<SectionProps> = ({ title, data, navTarget, onAdd, icon }
           horizontal
           data={data.slice(0, 5)}
           keyExtractor={(item, index) => item._id || index.toString()}
-          renderItem={({ item }) => (
-<TouchableOpacity
-  style={styles.item}
-  onPress={() => navigation.navigate(navTarget, { item })}
->
-  <Image
-  source={getImageForSection(title)}
-  style={styles.itemImage}
-  resizeMode="cover"
-/>
-
-  <Text style={styles.itemText}>
-    {renderItemLabel(item, title)}
-  </Text>
-</TouchableOpacity>
-
-          )}
+          renderItem={({ item }) => {
+            const label = renderItemLabel(item, title);
+            return (
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => navigation.navigate(navTarget, { item })}
+              >
+                <Image
+                  source={getImageForSection(title, item.reportType)}
+                  style={styles.itemImage}
+                  resizeMode="cover"
+                />
+                <Text style={styles.itemText}>{label.line1}</Text>
+                {label.line2 ? <Text style={styles.itemText}>{label.line2}</Text> : null}
+                {label.line3 ? <Text style={styles.itemText}>{label.line3}</Text> : null}
+              </TouchableOpacity>
+            );
+          }}
           showsHorizontalScrollIndicator={false}
         />
+
       )}
     </View>
   );
 };
 
 
-
 export default function HomeScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { user } = useUser();
+
   const userName = user?.name || 'User';
 
   const [motors, setMotors] = useState([]);
@@ -144,10 +209,16 @@ export default function HomeScreen() {
   const [fuelLogs, setFuelLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [gasStations, setGasStations] = useState<any[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      if (user && user._id) {
+        silentFetchData();
+      }
+    }, [user])
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+
 
   const fetchData = async () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -182,71 +253,125 @@ export default function HomeScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    fetchDataWithLoading();
   };
 
   const sections = [
     {
-      title: 'Your Motors',
-      icon: 'car-sport-outline',
+      title: 'My Motors',
+      subtitle: 'Registered Vehicles',
+      text: 'Your currently linked motorcycles.',
       data: motors,
       navTarget: 'MotorDetails',
       onAdd: () => navigation.navigate('AddMotorScreen'),
     },
     {
-      title: 'Your Trips',
-      icon: 'map-outline',
+      title: 'My Trips',
+      subtitle: 'Recent Travels',
+      text: 'Review your past and ongoing trips.',
       data: trips,
       navTarget: 'TripDetails',
     },
     {
       title: 'Traffic Reports',
-      icon: 'alert-circle-outline',
+      subtitle: 'Hazards & Warnings',
+      text: 'Be aware of community-submitted alerts.',
       data: alerts,
       navTarget: 'AlertDetails',
     },
     {
       title: 'Saved Destinations',
-      icon: 'location-outline',
+      subtitle: 'Favorites',
+      text: 'Quickly navigate to your common spots.',
       data: destinations,
-      navTarget: 'allSavedDestinationScreen',
-      onAdd: () => navigation.navigate('addSavedDestinationScreen'),
+      navTarget: 'DestinationDetails',
+      onAdd: () => navigation.navigate('AddDestinationScreen'),
     },
     {
       title: 'Fuel Logs',
-      icon: 'analytics-outline',
+      subtitle: 'Refueling Activity',
+      text: 'Track fuel usage and costs.',
       data: fuelLogs,
       navTarget: 'FuelLogDetails',
-      onAdd: () => navigation.navigate('addFuelLogScreen'),
+      onAdd: () => navigation.navigate('AddFuelLogScreen'),
     },
+    {
+  title: 'Nearby Gas Stations',
+  subtitle: 'Up to 5km away',
+  text: 'View nearby gas stations with available services.',
+  data: gasStations,
+  navTarget: 'GasStations', // Optional or replace with a proper screen later
+},
+
   ];
+
+
+
+  const silentFetchData = async () => {
+    try {
+      const coords: any = await getCurrentLocation();
+      const [
+        motorsRes,
+        tripsRes,
+        alertsRes,
+        destinationsRes,
+        logsRes,
+        gasStationsRes
+      ] = await Promise.all([
+        axios.get(`${API_BASE}/api/user-motors/user/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/trips/user/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/reports`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/saved-destinations/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/fuel-logs/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/gas-stations/nearby?lat=${coords.latitude}&lng=${coords.longitude}`).catch(() => ({ data: [] })),
+      ]);
+      console.log("user._id", user._id);
+      console.log("motorsRes.data", motorsRes.data);
+      setMotors(motorsRes.data);
+      setTrips(tripsRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setAlerts(alertsRes.data);
+      setDestinations(destinationsRes.data);
+      setFuelLogs(logsRes.data);
+      setGasStations(gasStationsRes.data);
+    } catch (err) {
+      console.error("⚠️ Silent Fetch Error:", err);
+    }
+  };
+
+  const fetchDataWithLoading = async () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setLoading(true);
+    await silentFetchData();
+    setLoading(false);
+    setRefreshing(false);
+  };
+
+
 
   return (
     <FlatList
-  data={sections}
-  keyExtractor={(item) => item.title}
-  ListHeaderComponent={
-    <View>
-      <Image
-        source={require('../../assets/logo_trafficSlight.png')}
-        style={{ width: "70%", height: 69, alignSelf: 'center', marginBottom: 20 }}
-      />
-      <Text style={styles.greeting}>Welcome, {userName} 👋</Text>
-    </View>
-  }
-  renderItem={({ item }) => (
-    <Section
-      title={item.title}
-      data={item.data}
-      navTarget={item.navTarget}
-      onAdd={item.onAdd}
-      icon={item.icon}
-    />
-
-
-        
+      data={sections}
+      keyExtractor={(item) => item.title}
+      ListHeaderComponent={
+        <View>
+          <Image
+            source={require('../../assets/logo_trafficSlight.png')}
+            style={{ width: "70%", height: 69, alignSelf: 'center', marginBottom: 20 }}
+          />
+          <Text style={styles.greeting}>Welcome, {userName} 👋</Text>
+        </View>
+      }
+      renderItem={({ item }) => (
+        <Section
+          title={item.title}
+          subtitle={item.subtitle}
+          text={item.text}
+          data={item.data}
+          navTarget={item.navTarget}
+          onAdd={item.onAdd}
+          icon={item.icon}
+        />
       )}
-      
       ListFooterComponent={
         <TouchableOpacity
           style={styles.calcBtn}
@@ -264,12 +389,15 @@ export default function HomeScreen() {
       }
     />
   );
+
+
 }
+
 
 const styles = StyleSheet.create({
   container: {
     paddingTop: 40,
-    padding: 20,
+    padding: 20,  
   },
   greeting: {
     fontSize: 24,
@@ -278,6 +406,8 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
+
+    backgroundColor: 'orange',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -299,31 +429,25 @@ const styles = StyleSheet.create({
     marginRight: 10,
     fontWeight: '500',
   },
-  addButton: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    paddingHorizontal: 10,
-  },
   item: {
     backgroundColor: '#f0f0f0',
     padding: 15,
     borderRadius: 10,
     marginRight: 10,
-    minWidth: 120,
+    width: 150,
     alignItems: 'center',
+    height: 170,
   },
   itemText: {
     fontSize: 14,
   },
   itemImage: {
-  width: 60,
-  height: 60,
-  borderRadius: 8,
-  marginBottom: 6,
-  backgroundColor: '#ccc',
-},
-
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginBottom: 6,
+    backgroundColor: '#ccc',
+  },
   emptyText: {
     fontSize: 14,
     color: 'gray',
@@ -342,4 +466,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 2,
+  },
+  sectionText: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 1,
+    fontStyle: 'italic',
+  },
+
 });
+function setGasStations(data: any) {
+  throw new Error('Function not implemented.');
+}
+

@@ -14,8 +14,8 @@ import { TextInput, Button, HelperText } from "react-native-paper";
 import * as Google from "expo-auth-session/providers/google";
 
 import { GOOGLE_CLIENT_ID, LOCALHOST_IP } from "@env";
-import { AuthContext } from "../AuthContext/AuthContext";
-import { useUser } from "../AuthContext/UserContext";
+import { AuthContext } from "../../AuthContext/AuthContext";
+import { useUser } from "../../AuthContext/UserContext";
 
 const inputTheme = {
   colors: {
@@ -263,7 +263,7 @@ const handleForgotPassword = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Image source={require("../assets/logo.png")} style={styles.logo} />
+        <Image source={require("../../assets/logo.png")} style={styles.logo} />
 
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to your account</Text>

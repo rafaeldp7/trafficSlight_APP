@@ -103,7 +103,7 @@ export default function FuelCalculatorScreen() {
           onPress={() => setSelectedMotor(motor)}
         >
           <Text style={styles.motorText}>
-            {motor.nickname || motor.model} - {motor.fuelEfficiency} km/L
+            {motor.name || motor.model} - {motor.fuelEfficiency} km/L
           </Text>
         </TouchableOpacity>
       ))}

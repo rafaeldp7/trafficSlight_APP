@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
-  StyleSheet, View, ActivityIndicator, KeyboardAvoidingView, 
+  StyleSheet, View, ActivityIndicator, KeyboardAvoidingView,
   TouchableWithoutFeedback, Keyboard, Platform, Image, Text,
-  TouchableOpacity, Modal, Alert, TextInput, SafeAreaView
+  TouchableOpacity, Modal, Alert, TextInput, SafeAreaView, ImageStyle
 } from "react-native";
 import Toast from "react-native-toast-message";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -12,6 +12,7 @@ import DropDownPicker from "react-native-dropdown-picker";
 import { useUser } from "../AuthContext/UserContext";
 import { LOCALHOST_IP, GOOGLE_MAPS_API_KEY } from "@env";
 import * as Linking from "expo-linking";
+
 
 const FAB = ({ onPress, label, bottom }) => (
   <TouchableOpacity style={[styles.fab, { bottom }]} onPress={onPress}>
@@ -53,7 +54,14 @@ const CustomMapViewComponent = React.memo(({ mapRef, region, mapStyle, currentLo
   >
     {currentLocation && (
       <Marker coordinate={currentLocation} title="Your Location">
-        <Image source={require("../assets/icons/User-onTrack-MARKER.png")} style={styles.userMarker} />
+        <Image
+          style={
+            styles.userMarker
+          }
+          source={require("../assets/icons/User-onTrack-MARKER.png")}
+
+        />
+
       </Marker>
     )}
 
@@ -85,7 +93,9 @@ const CustomMapViewComponent = React.memo(({ mapRef, region, mapStyle, currentLo
 
 const darkMapStyle = [/* your dark map style array */];
 
-export default function RouteSelectionScreen({ navigation }) {
+export default function RouteSelectionScreen({ navigation, route }) {
+  const { focusLocation } = route.params || {}; // 💡 Destructure optional param
+
   const { user } = useUser();
   const mapRef = useRef(null);
   const locationSubscription = useRef(null);
@@ -112,6 +122,30 @@ export default function RouteSelectionScreen({ navigation }) {
     { label: "Hazard", value: "Hazard" },
     { label: "Police", value: "Police" },
   ];
+
+  useEffect(() => {
+    fetchReports();
+    fetchValenzuelaGasStations();
+    startWatchingLocation();
+
+    // ✅ If a location is passed, zoom in there
+    if (focusLocation?.latitude && focusLocation?.longitude) {
+      const targetRegion = {
+        latitude: focusLocation.latitude,
+        longitude: focusLocation.longitude,
+        latitudeDelta: 0.0015,
+        longitudeDelta: 0.0015,
+      };
+      setRegion(targetRegion);
+      mapRef.current?.animateToRegion(targetRegion, 1200);
+    } else {
+      getCurrentLocation(); // fallback to user's own location
+    }
+
+    return () => locationSubscription.current?.remove();
+  }, []);
+
+
 
   const startWatchingLocation = useCallback(async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -165,7 +199,7 @@ export default function RouteSelectionScreen({ navigation }) {
 
   const fetchValenzuelaGasStations = async () => {
     try {
-      const res = await fetch(`${LOCALHOST_IP}/api/gas-stations/nearby?lat=14.7000&lng=120.9830`);
+      const res = await fetch(`${LOCALHOST_IP}/api/gas-stations`);
       const data = await res.json();
       setGasStations(data || []);
     } catch (err) {
@@ -208,46 +242,46 @@ export default function RouteSelectionScreen({ navigation }) {
   useEffect(() => {
     fetchReports();
     fetchValenzuelaGasStations();
-    startWatchingLocation();
+
     return () => locationSubscription.current?.remove();
   }, []);
 
 
   const fetchNearbyGasStations = async () => {
-  try {
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=14.7000,120.9830&radius=5000&type=gas_station&key=${GOOGLE_MAPS_API_KEY}`;
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=14.7000,120.9830&radius=5000&type=gas_station&key=${GOOGLE_MAPS_API_KEY}`;
 
-    const response = await fetch(url);
-    const data = await response.json();
+      const response = await fetch(url);
+      const data = await response.json();
 
-    if (data.status !== "OK") {
-      console.warn("Google Maps API error:", data.status);
-      Alert.alert("Error", "Failed to fetch gas stations from Google.");
-      return;
+      if (data.status !== "OK") {
+        console.warn("Google Maps API error:", data.status);
+        Alert.alert("Error", "Failed to fetch gas stations from Google.");
+        return;
+      }
+
+      // Format the results to match expected structure
+      const formattedStations = data.results.map((item) => ({
+        name: item.name,
+        brand: item.name.split(" ")[0], // crude estimate
+        location: {
+          coordinates: [item.geometry.location.lng, item.geometry.location.lat],
+        },
+        fuelPrices: { gasoline: "N/A", diesel: "N/A" }, // Google doesn't provide prices
+      }));
+
+      setGasStations(formattedStations);
+
+
+
+    } catch (error) {
+      console.error("Google gas station fetch error:", error);
+      Alert.alert("Error", "Unable to fetch gas stations from Google.");
     }
-
-    // Format the results to match expected structure
-    const formattedStations = data.results.map((item) => ({
-      name: item.name,
-      brand: item.name.split(" ")[0], // crude estimate
-      location: {
-        coordinates: [item.geometry.location.lng, item.geometry.location.lat],
-      },
-      fuelPrices: { gasoline: "N/A", diesel: "N/A" }, // Google doesn't provide prices
-    }));
-
-    setGasStations(formattedStations);
-
-
-    
-  } catch (error) {
-    console.error("Google gas station fetch error:", error);
-    Alert.alert("Error", "Unable to fetch gas stations from Google.");
-  }
-};
-useEffect(() => {
-  fetchNearbyGasStations(); // Fetch from Google directly
-}, []);
+  };
+  useEffect(() => {
+    fetchNearbyGasStations(); // Fetch from Google directly
+  }, []);
 
 
 
@@ -303,7 +337,7 @@ useEffect(() => {
                     items={reportTypes}
                     setOpen={setOpen}
                     setValue={setTrafficReportType}
-                    setItems={() => {}}
+                    setItems={() => { }}
                     style={{ borderColor: "#ccc", marginBottom: 20 }}
                   />
                   <TextInput
@@ -330,12 +364,18 @@ useEffect(() => {
   );
 }
 
+
+
 const styles = StyleSheet.create({
   map: { flex: 1 },
   fab: { position: 'absolute', right: 0, left: 0, padding: 15, backgroundColor: "#007AFF", zIndex: 999 },
   fabText: { color: "#000", fontSize: 16, marginLeft: 8 },
   fabContent: { flexDirection: 'row', alignItems: 'center', backgroundColor: "#fff", padding: 10, borderRadius: 50 },
-  userMarker: { width: 35, height: 35, borderRadius: 20 },
+  userMarker: {
+    width: 50,
+    height: 50,
+    resizeMode: "contain",
+  } as ImageStyle,
   iconMarker: { width: 35, height: 35 },
   myLocationButton: { position: "absolute", padding: 15, borderRadius: 50, zIndex: 300, backgroundColor: "#007AFF" },
   disabledBtn: { backgroundColor: "#aaa", opacity: 0.6 },

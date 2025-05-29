@@ -38,16 +38,20 @@ export default function AddFuelLogScreen() {
 
   const fetchMotors = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/user-motors/${user._id}`);
+      const res = await axios.get(`${API_BASE}/api/user-motors/user/${user._id}`);
       setMotors(res.data);
       setItems(
         res.data.map((motor) => ({
-          label: motor.nickname || motor.motorcycleId.model,
+          label: motor.nickname || motor.name,
           value: motor._id,
         }))
       );
+      console.log("Fetched motors:", res.data);
+      console.log("Dropdown items:", items);
+      console.log("User ID:", user._id);
+      console.log("User data:", user);
     } catch (err) {
-      console.error("Failed to fetch motors", err);
+      console.error("Failed to fetch motorss", err);
     }
   };
 

@@ -17,7 +17,7 @@ import {
   List,
   HelperText,
 } from "react-native-paper";
-import { AuthContext } from "../AuthContext/AuthContext";
+import { AuthContext } from "../../AuthContext/AuthContext";
 import { LOCALHOST_IP } from "@env";
 
 // Sample barangay data for Valenzuela
@@ -222,7 +222,7 @@ export default function RegisterScreen({ navigation }) {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
         <Image
-          source={require("../assets/logo.png")}
+          source={require("../../assets/logo.png")}
           style={{ width: 100, height: 100, alignSelf: "center", marginBottom: 20 }}
         />
         <Text style={styles.title}>Create a New Account</Text>

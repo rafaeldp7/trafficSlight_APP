@@ -5,7 +5,7 @@ const IndexScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Logo */}
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
+      <Image source={require('../../assets/logo.png')} style={styles.logo} />
       
       {/* Title */}
       <Text style={styles.title}>Welcome to Traffic Slight</Text>

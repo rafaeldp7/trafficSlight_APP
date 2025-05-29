@@ -5,13 +5,13 @@ import { MaterialCommunityIcons } from "react-native-vector-icons";
 
 import ProfileScreen from "../Screens/loggedIn/ProfileScreen";
 import RouteSelectionScreen from "../Screens/RouteSelectionScreen";
-import TrackingScreen from "../Screens/_notImportant/TrackingScreen";
+// import TrackingScreen from "../Screens/_notImportant/TrackingScreen";
 import AddMotorScreen from "../Screens/account_tab/AddMotorScreen";
 import HelpCenterScreen from "../Screens/account_tab/HelpCenterScreen";
 import ReportBugScreen from "../Screens/account_tab/ReportBug";
 import AccountSettingsScreen from "../Screens/account_tab/AccountSettingsScreen";
 import NotificationSettingsScreen from "../Screens/account_tab/NotificationSettingsScreen";
-import SelectRouteScreen from "../Screens/_notImportant/SelectRouteScreen";
+// import SelectRouteScreen from "../Screens/_notImportant/SelectRouteScreen";
 import MapScreenTry from "../Screens/loggedIn/MapScreenTry";
 import Menu from "../Screens/_notImportant/may22/Menu";
 import HomeScreen from "../Screens/loggedIn/HomeScreen";
@@ -30,6 +30,7 @@ import PrivacySettingsScreen from "../Screens/account_tab/PrivacySettingsScreen"
 import NotificationSettings from "../Screens/account_tab/NotificationSettingsScreen";
 import LicenseOCR from "../Screens/loggedIn/LicenceScanner";
 import allSavedDestinationScreen from "../Screens/loggedIn/allSavedDestination";
+import GasStationsScreen from "../Screens/loggedIn/gasStationsDetails";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -71,13 +72,13 @@ export default function SignedInStack() {
   <Stack.Screen name="Home" component={LicenseOCR} />
   <Stack.Screen name="LicenseOCR" component={LicenseOCR} />
   <Stack.Screen name="RouteSelectionScreen" component={RouteSelectionScreen} />
-  <Stack.Screen name="TrackingScreen" component={TrackingScreen} />
+  {/* <Stack.Screen name="TrackingScreen" component={TrackingScreen} /> */}
   <Stack.Screen name="AddMotorScreen" component={AddMotorScreen} />
   <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
   <Stack.Screen name="ReportBugScreen" component={ReportBugScreen} />
   <Stack.Screen name="AccountSettingsScreen" component={AccountSettingsScreen} />
-  <Stack.Screen name="NotificationSettingsScreen" component={NotificationSettingsScreen} />
-  <Stack.Screen name="SelectRouteScreen" component={SelectRouteScreen} />
+  {/* <Stack.Screen name="NotificationSettingsScreen" component={NotificationSettingsScreen} /> */}
+  {/* <Stack.Screen name="SelectRouteScreen" component={SelectRouteScreen} /> */}
   <Stack.Screen name="MapScreenTry" component={MapScreenTry} />
   <Stack.Screen name="Menu" component={Menu} />
 
@@ -88,11 +89,13 @@ export default function SignedInStack() {
   <Stack.Screen name="DestinationDetails" component={DestinationDetailsScreen} />
   <Stack.Screen name="FuelLogDetails" component={FuelLogDetailsScreen} />
   <Stack.Screen name="FuelCalculator" component={FuelCalculatorScreen} />
+  <Stack.Screen name = "GasStations" component={GasStationsScreen} />
 
-  <Stack.Screen name="addFuelLogScreen" component={AddFuelLogScreen} />
-  <Stack.Screen name="addSavedDestinationScreen" component={addSavedDestinationScreen} />
+  <Stack.Screen name="AddFuelLogScreen" component={AddFuelLogScreen} />
+  <Stack.Screen name="AddSavedDestinationScreen" component={addSavedDestinationScreen} />
   <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
-  <Stack.Screen name="allSavedDestinationScreen" component={allSavedDestinationScreen} />
+  <Stack.Screen name="AllSavedDestinationScreen" component={allSavedDestinationScreen} />
+  
   {/* 👆 Add these for Home navigation */}
     <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
   <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
