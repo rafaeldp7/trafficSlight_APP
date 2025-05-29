@@ -7,20 +7,31 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
 } from "react-native";
 import tw from "twrnc";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useUser } from "../../AuthContext/UserContext";
 import { LOCALHOST_IP } from "@env";
 
 const PAGE_SIZE = 5;
 
+type RouteParams = {
+  item?: any;
+  fullList?: any[];
+};
+
 export default function FuelLogDetailsScreen() {
   const { user } = useUser();
   const navigation = useNavigation();
+  const route = useRoute();
+  const { item, fullList } = route.params as RouteParams;
   const [logs, setLogs] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [page, setPage] = useState(1);
@@ -30,7 +41,7 @@ export default function FuelLogDetailsScreen() {
   const [toDateStr, setToDateStr] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [showFromPicker, setShowFromPicker] = useState(false);
-const [showToPicker, setShowToPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
 
   useEffect(() => {
     if (user?._id) fetchLogs();
@@ -53,29 +64,28 @@ const [showToPicker, setShowToPicker] = useState(false);
   useEffect(() => {
     let temp = [...logs];
 
-if (search.trim()) {
-  const term = search.toLowerCase();
-  temp = temp.filter((log) => {
-    const nickname = log.motorId?.nickname?.toLowerCase() || "";
-    const model = log.motorId?.motorcycleId?.model?.toLowerCase() || "";
-    const date = new Date(log.date).toLocaleString("en-PH").toLowerCase();
-    const liters = String(log.liters || "").toLowerCase();
-    const price = String(log.pricePerLiter?.toFixed(2) || "").toLowerCase();
-    const totalCost = String(log.totalCost?.toFixed(2) || "").toLowerCase();
-    const notes = log.notes?.toLowerCase() || "";
+    if (search.trim()) {
+      const term = search.toLowerCase();
+      temp = temp.filter((log) => {
+        const nickname = log.motorId?.nickname?.toLowerCase() || "";
+        const model = log.motorId?.motorcycleId?.model?.toLowerCase() || "";
+        const date = new Date(log.date).toLocaleString("en-PH").toLowerCase();
+        const liters = String(log.liters || "").toLowerCase();
+        const price = String(log.pricePerLiter?.toFixed(2) || "").toLowerCase();
+        const totalCost = String(log.totalCost?.toFixed(2) || "").toLowerCase();
+        const notes = log.notes?.toLowerCase() || "";
 
-    return (
-      nickname.includes(term) ||
-      model.includes(term) ||
-      date.includes(term) ||
-      liters.includes(term) ||
-      price.includes(term) ||
-      totalCost.includes(term) ||
-      notes.includes(term)
-    );
-  });
-}
-
+        return (
+          nickname.includes(term) ||
+          model.includes(term) ||
+          date.includes(term) ||
+          liters.includes(term) ||
+          price.includes(term) ||
+          totalCost.includes(term) ||
+          notes.includes(term)
+        );
+      });
+    }
 
     if (fromDateStr && toDateStr) {
       const from = new Date(fromDateStr);
@@ -103,141 +113,304 @@ if (search.trim()) {
     if (page * PAGE_SIZE < filtered.length) setPage((p) => p + 1);
   };
 
-  return (
-    <View style={tw`flex-1 bg-gray-50 px-4 pt-7`}>
-      {/* Back Button */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={tw`mb-4`}>
-        <View style={tw`flex-row items-center`}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-          <Text style={tw`ml-2 text-lg`}>Back</Text>
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-PH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const renderFuelLog = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.logCard}
+      onPress={() => navigation.navigate('FuelLogDetails', { item })}
+    >
+      <View style={styles.logHeader}>
+        <View style={styles.logHeaderLeft}>
+          <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+          <Text style={styles.motorName}>{item.motorId?.nickname ?? 'Unknown Motor'}</Text>
         </View>
-      </TouchableOpacity>
-
-      <Text style={tw`text-2xl font-bold mb-4`}>Fuel Logs</Text>
-
-      <TextInput
-        placeholder="Search by motor or notes"
-        value={search}
-        onChangeText={setSearch}
-        style={tw`border border-gray-300 rounded-lg p-3 mb-2`}
-      />
-
-      <View style={tw`flex-row justify-between mb-2`}>
-  <TouchableOpacity
-    onPress={() => setShowFromPicker(true)}
-    style={tw`border border-gray-300 px-3 py-2 rounded-lg flex-1 mr-1`}
-  >
-    <Text style={tw`text-gray-700`}>
-      {fromDateStr ? fromDateStr : "From Date"}
-    </Text>
-  </TouchableOpacity>
-
-  <TouchableOpacity
-    onPress={() => setShowToPicker(true)}
-    style={tw`border border-gray-300 px-3 py-2 rounded-lg flex-1 ml-1`}
-  >
-    <Text style={tw`text-gray-700`}>
-      {toDateStr ? toDateStr : "To Date"}
-    </Text>
-  </TouchableOpacity>
-</View>
-{showFromPicker && (
-  <DateTimePicker
-    value={fromDateStr ? new Date(fromDateStr) : new Date()}
-    mode="date"
-    display={Platform.OS === "ios" ? "spinner" : "default"}
-    onChange={(event, selectedDate) => {
-      setShowFromPicker(false);
-      if (event.type !== "dismissed" && selectedDate) {
-        setFromDateStr(selectedDate.toISOString().split("T")[0]);
-      }
-    }}
-  />
-)}
-
-
-{showToPicker && (
-  <DateTimePicker
-    value={toDateStr ? new Date(toDateStr) : new Date()}
-    mode="date"
-    display={Platform.OS === "ios" ? "spinner" : "default"}
-    onChange={(event, selectedDate) => {
-      setShowToPicker(false);
-      if (event.type !== "dismissed" && selectedDate) {
-        setToDateStr(selectedDate.toISOString().split("T")[0]);
-      }
-    }}
-  />
-)}
-
-
-
-
-      <TouchableOpacity
-        onPress={() => {
-          setFromDateStr("");
-          setToDateStr("");
-        }}
-        style={tw`px-3 py-2 bg-red-500 rounded-lg items-center mb-2`}
-      >
-        <Text style={tw`text-white`}>Clear Dates</Text>
-      </TouchableOpacity>
-
-      <View style={tw`flex-row mb-2`}>
-        {["date", "liters", "cost"].map((key) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setSortBy(key)}
-            style={tw`mr-2 px-3 py-2 rounded-lg border ${
-              sortBy === key ? "border-blue-500" : "border-gray-300"
-            }`}
-          >
-            <Text>{key.toUpperCase()}</Text>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.priceContainer}>
+          <Text style={styles.totalPrice}>₱{item.totalCost?.toFixed(2) || '--'}</Text>
+        </View>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#3b82f6" />
-      ) : paginated.length === 0 ? (
-        <Text style={tw`text-center mt-10 text-gray-400`}>
-          No fuel logs found.
-        </Text>
-      ) : (
-        <FlatList
-          data={paginated}
-          keyExtractor={(item) => item._id}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.2}
-          renderItem={({ item }) => (
-            <View style={tw`bg-white p-4 mb-3 rounded-lg shadow`}>
-              <Text style={tw`font-bold text-lg`}>
-                {item.motorId?.nickname ?? "Unnamed Motor"}
-              </Text>
-              <Text style={tw`text-gray-700`}>
-                Model: {item.motorId?.motorcycleId?.model ?? "Unknown"}
-              </Text>
-              <Text style={tw`text-gray-700`}>
-                Plate: {item.motorId?.plateNumber ?? "N/A"}
-              </Text>
-              <Text>
-                Date: {new Date(item.date).toLocaleString("en-PH", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: true,
-                })}
-              </Text>
-              <Text>Liters: {item.liters}</Text>
-              <Text>Price/L: ₱{item.pricePerLiter.toFixed(2)}</Text>
-              <Text>Total Cost: ₱{item.totalCost.toFixed(2)}</Text>
-              {item.notes && <Text>Notes: {item.notes}</Text>}
+      <View style={styles.logDetails}>
+        <View style={styles.detailRow}>
+          <View style={styles.detailItem}>
+            <Ionicons name="water-outline" size={20} color="#00ADB5" />
+            <Text style={styles.detailLabel}>Volume</Text>
+            <Text style={styles.detailValue}>{item.liters?.toFixed(1) || '--'} L</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Ionicons name="pricetag-outline" size={20} color="#00ADB5" />
+            <Text style={styles.detailLabel}>Price/L</Text>
+            <Text style={styles.detailValue}>₱{item.pricePerLiter?.toFixed(2) || '--'}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Ionicons name="speedometer-outline" size={20} color="#00ADB5" />
+            <Text style={styles.detailLabel}>Odometer</Text>
+            <Text style={styles.detailValue}>{item.odometer || '--'} km</Text>
+          </View>
+        </View>
+        {item.notes && (
+          <Text style={styles.notes}>{item.notes}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (fullList) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <LinearGradient
+            colors={['#00ADB5', '#00C2CC']}
+            style={styles.headerGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text style={styles.headerTitle}>Fuel Logs</Text>
+                <Text style={styles.headerSubtitle}>Track your refueling history</Text>
+              </View>
             </View>
-          )}
+          </LinearGradient>
+        </View>
+
+        <FlatList
+          data={fullList}
+          renderItem={renderFuelLog}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={styles.listContainer}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="water-outline" size={48} color="#00ADB5" />
+              <Text style={styles.emptyStateText}>No fuel logs yet</Text>
+              <Text style={styles.emptyStateSubtext}>
+                Add your first fuel log to start tracking
+              </Text>
+            </View>
+          }
         />
-      )}
-    </View>
+
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => navigation.navigate('AddFuelLogScreen')}
+        >
+          <LinearGradient
+            colors={['#00ADB5', '#00C2CC']}
+            style={styles.fabGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={['#00ADB5', '#00C2CC']}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Fuel Log Details</Text>
+              <Text style={styles.headerSubtitle}>{formatDate(item?.date)}</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+
+      <View style={styles.detailsContainer}>
+        {renderFuelLog({ item })}
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F2EEEE',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#00ADB5',
+  },
+  headerGradient: {
+    width: '100%',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingTop: 20,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 8,
+  },
+  listContainer: {
+    padding: 16,
+  },
+  detailsContainer: {
+    padding: 16,
+  },
+  logCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  logHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  logHeaderLeft: {
+    flex: 1,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  motorName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  priceContainer: {
+    backgroundColor: '#F8F9FA',
+    padding: 8,
+    borderRadius: 8,
+  },
+  totalPrice: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#00ADB5',
+  },
+  logDetails: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  detailItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  notes: {
+    fontSize: 14,
+    color: '#666666',
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    borderRadius: 28,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.30,
+    shadowRadius: 4.65,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -6,13 +6,19 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from "react-native";
 import { Portal, Modal, List } from "react-native-paper";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
 import tw from "twrnc";
 import axios from "axios";
 import { useUser } from "../../AuthContext/UserContext";
 import { LOCALHOST_IP } from "@env";
+
+const API_BASE = 'https://ts-backend-1-jyit.onrender.com';
 
 const barangays = [
   "Arkong Bato", "Bagbaguin", "Bignay", "Bisig", "Canumay East", "Canumay West", "Coloong",
@@ -88,80 +94,103 @@ export default function AccountSettingsScreen({ navigation }) {
   };
 
   return (
-    <View style={tw`flex-1 bg-white pt-7`}>
+    <SafeAreaView style={tw`flex-1 bg-[#F2EEEE]`}>
+      <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
+      
       {/* Header */}
-      <View style={tw`px-5 py-4 border-b border-gray-200 flex-row items-center`}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={tw`text-lg font-bold ml-4`}>Account Settings</Text>
+      <View style={tw`w-full bg-[#00ADB5]`}>
+        <LinearGradient
+          colors={['#00ADB5', '#00C2CC']}
+          style={tw`w-full`}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <View style={tw`flex-row items-center p-4 pt-${Platform.OS === 'android' ? '6' : '4'}`}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={tw`p-2 mr-2`}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={tw`flex-1`}>
+              <Text style={tw`text-2xl font-semibold text-white mb-1`}>Account Settings</Text>
+              <Text style={tw`text-sm text-white opacity-80`}>Manage your profile information</Text>
+            </View>
+          </View>
+        </LinearGradient>
       </View>
 
       {/* Form */}
-      <ScrollView style={tw`p-5`}>
-        <Text style={tw`text-gray-600 text-sm mb-3`}>
-          Edit your profile information
-        </Text>
+      <ScrollView style={tw`p-4`}>
+        <View style={tw`bg-white rounded-2xl p-5 shadow-sm mb-4`}>
+          {[
+            { label: "Name", key: "name" },
+            { label: "Email", key: "email" },
+            { label: "City", key: "city" },
+            { label: "Province", key: "province" },
+          ].map(({ label, key }) => (
+            <View key={key} style={tw`mb-4`}>
+              <Text style={tw`text-sm font-medium text-gray-700 mb-1`}>{label}</Text>
+              <TextInput
+                value={form[key]}
+                onChangeText={(value) => handleChange(key, value)}
+                editable={key !== "city" && key !== "province"}
+                style={tw.style(
+                  'border border-gray-200 rounded-xl px-4 py-3 bg-[#F8F9FA]',
+                  key === "city" || key === "province" ? 'text-gray-400' : 'text-gray-800'
+                )}
+                placeholder={`Enter ${label.toLowerCase()}`}
+              />
+            </View>
+          ))}
 
-        {[
-          { label: "Name", key: "name" },
-          { label: "Email", key: "email" },
-          { label: "City", key: "city" },
-          { label: "Province", key: "province" },
-        ].map(({ label, key }) => (
-          <View key={key} style={tw`mb-4`}>
-            <Text style={tw`text-sm text-gray-700 mb-1`}>{label}</Text>
+          {/* Barangay before Street */}
+          <View style={tw`mb-4`}>
+            <Text style={tw`text-sm font-medium text-gray-700 mb-1`}>Barangay</Text>
+            <TouchableOpacity
+              style={tw`border border-gray-200 rounded-xl px-4 py-3 bg-[#F8F9FA]`}
+              onPress={() => setBarangayModal(true)}
+            >
+              <Text style={tw`${form.barangay ? "text-gray-800" : "text-gray-400"}`}>
+                {form.barangay || "Select Barangay"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={tw`mb-4`}>
+            <Text style={tw`text-sm font-medium text-gray-700 mb-1`}>Street</Text>
             <TextInput
-              value={form[key]}
-              onChangeText={(value) => handleChange(key, value)}
-              editable={key !== "city" && key !== "province"}
-              style={tw`border border-gray-300 rounded-lg px-4 py-2 bg-white ${
-                key === "city" || key === "province" ? "text-gray-400" : ""
-              }`}
-              placeholder={`Enter ${label.toLowerCase()}`}
+              value={form["street"]}
+              onChangeText={(value) => handleChange("street", value)}
+              style={tw`border border-gray-200 rounded-xl px-4 py-3 bg-[#F8F9FA] text-gray-800`}
+              placeholder="Enter street"
             />
           </View>
-        ))}
 
-        {/* Barangay before Street */}
-        <View style={tw`mb-4`}>
-          <Text style={tw`text-sm text-gray-700 mb-1`}>Barangay</Text>
+          {/* Save Button */}
           <TouchableOpacity
-            style={tw`border border-gray-300 rounded-lg px-4 py-2 bg-white`}
-            onPress={() => setBarangayModal(true)}
+            onPress={handleSave}
+            style={tw`mt-6 overflow-hidden rounded-xl`}
           >
-            <Text style={tw`${form.barangay ? "text-black" : "text-gray-400"}`}>
-              {form.barangay || "Select Barangay"}
-            </Text>
+            <LinearGradient
+              colors={['#00ADB5', '#00C2CC']}
+              style={tw`p-4 items-center`}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={tw`text-white font-semibold text-base`}>Save Changes</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={tw`mt-4 bg-red-500 p-4 rounded-xl flex-row items-center justify-center`}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={22} color="white" />
+            <Text style={tw`ml-3 text-white text-base font-semibold`}>Log Out</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={tw`mb-4`}>
-          <Text style={tw`text-sm text-gray-700 mb-1`}>Street</Text>
-          <TextInput
-            value={form["street"]}
-            onChangeText={(value) => handleChange("street", value)}
-            style={tw`border border-gray-300 rounded-lg px-4 py-2 bg-white`}
-            placeholder="Enter street"
-          />
-        </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          onPress={handleSave}
-          style={tw`bg-blue-500 mt-3 p-4 rounded-lg items-center`}
-        >
-          <Text style={tw`text-white font-bold text-base`}>Save Changes</Text>
-        </TouchableOpacity>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={tw`mt-5 bg-red-500 p-4 rounded-lg flex-row items-center justify-center`}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={22} color="white" />
-          <Text style={tw`ml-3 text-white text-base font-bold`}>Log Out</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Barangay Modal */}
@@ -173,11 +202,11 @@ export default function AccountSettingsScreen({ navigation }) {
             backgroundColor: "white",
             margin: 20,
             padding: 20,
-            borderRadius: 10,
+            borderRadius: 16,
             maxHeight: "80%",
           }}
         >
-          <Text style={{ fontWeight: "bold", fontSize: 18, marginBottom: 10 }}>
+          <Text style={tw`text-xl font-semibold mb-4`}>
             Select Your Barangay
           </Text>
           <ScrollView>
@@ -189,11 +218,12 @@ export default function AccountSettingsScreen({ navigation }) {
                   handleChange("barangay", b);
                   setBarangayModal(false);
                 }}
+                style={tw`rounded-xl`}
               />
             ))}
           </ScrollView>
         </Modal>
       </Portal>
-    </View>
+    </SafeAreaView>
   );
 }

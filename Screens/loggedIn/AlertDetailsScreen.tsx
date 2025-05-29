@@ -8,10 +8,13 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
+  StatusBar,
+  Platform,
+  StyleSheet,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
-import tw from "twrnc";
 import { LOCALHOST_IP, GOOGLE_MAPS_API_KEY } from "@env";
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function TrafficReportsScreen({ navigation }) {
   const [reports, setReports] = useState([]);
@@ -60,13 +63,13 @@ export default function TrafficReportsScreen({ navigation }) {
     }, []);
 
     return (
-      <View style={tw`bg-white rounded-lg p-4 mb-3 shadow-sm border`}>
-        <View style={tw`flex-row items-center mb-2`}>
-          <Ionicons name="alert-circle" size={22} color="#f87171" style={tw`mr-2`} />
-          <Text style={tw`font-bold text-lg`}>{report.reportType}</Text>
+      <View style={styles.reportCard}>
+        <View style={styles.reportHeader}>
+          <Ionicons name="alert-circle" size={24} color="#00ADB5" style={styles.reportIcon} />
+          <Text style={styles.reportTitle}>{report.reportType}</Text>
         </View>
-        <Text style={tw`text-gray-600`}>{report.description}</Text>
-        <Text style={tw`text-gray-400 mt-1 text-sm`}>{address}</Text>
+        <Text style={styles.reportDescription}>{report.description}</Text>
+        <Text style={styles.reportAddress}>{address}</Text>
       </View>
     );
   };
@@ -77,36 +80,225 @@ export default function TrafficReportsScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-gray-50`}>
-      <View style={tw`px-5 pt-10 pb-4 border-b border-gray-200 flex-row items-center bg-white`}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={tw`text-lg font-bold ml-4`}>Traffic Reports</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={['#00ADB5', '#00C2CC']}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Traffic Reports</Text>
+              <Text style={styles.headerSubtitle}>View road alerts and hazards</Text>
+            </View>
+          </View>
+        </LinearGradient>
       </View>
 
-      <View style={tw`px-5 mt-4`}>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search reports..."
-          style={tw`border border-gray-300 rounded-lg p-3 mb-4`}
-        />
+      <View style={styles.container}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search-outline" size={20} color="#666666" style={styles.searchIcon} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search reports..."
+              style={styles.searchInput}
+              placeholderTextColor="#999999"
+            />
+          </View>
+        </View>
 
+        {/* Reports List */}
         {loading ? (
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#00ADB5" />
+          </View>
         ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => <ReportCard report={item} />}
-            ListEmptyComponent={
-              <Text style={tw`text-center text-gray-400 mt-4`}>No reports found.</Text>
-            }
-            contentContainerStyle={tw`pb-20`}
-          />
+          <>
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item._id}
+              renderItem={({ item }) => <ReportCard report={item} />}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="alert-circle-outline" size={48} color="#00ADB5" />
+                  <Text style={styles.emptyStateText}>No reports found</Text>
+                </View>
+              }
+              contentContainerStyle={styles.listContainer}
+            />
+            
+            {/* Add Report FAB */}
+            <TouchableOpacity 
+              style={styles.fab}
+              onPress={() => {}}
+            >
+              <LinearGradient
+                colors={['#00ADB5', '#00C2CC']}
+                style={styles.fabGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="add" size={24} color="#FFFFFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
         )}
       </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F2EEEE',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#F2EEEE',
+    zIndex: 10,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 12 : 16,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+  },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  searchContainer: {
+    marginBottom: 16,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333333',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContainer: {
+    paddingBottom: 20,
+  },
+  reportCard: {
+    backgroundColor: '#FFFAFA',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reportIcon: {
+    marginRight: 8,
+  },
+  reportTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  reportDescription: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 8,
+  },
+  reportAddress: {
+    fontSize: 12,
+    color: '#999999',
+  },
+  emptyState: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    borderRadius: 28,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

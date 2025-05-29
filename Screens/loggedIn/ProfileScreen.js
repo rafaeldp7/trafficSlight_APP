@@ -1,27 +1,34 @@
 import React, { useContext } from "react";
-import { View, Alert, TouchableOpacity, Text, Platform, PixelRatio } from "react-native";
+import {
+  View,
+  Alert,
+  TouchableOpacity,
+  Text,
+  Platform,
+  StyleSheet,
+  Image,
+  StatusBar,
+  ScrollView,
+} from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import { AuthContext } from "../../AuthContext/AuthContext";
 import { useUser } from "../../AuthContext/UserContext";
-import tw from "twrnc";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from 'expo-linear-gradient';
 
-// Utility for scaling font sizes
-const fontScale = PixelRatio.getFontScale();
-const scaleFont = (size) => size * fontScale;
-
-const iconSize = 34;
+const iconSize = 24;
 
 const ProfileScreen = ({ navigation }) => {
-  const { user ,clearUser} = useUser();
-  if (!user) {
-
-    <View style={tw`flex-1 justify-center items-center`}>
-      <Text>Loading...</Text>
-    </View>
-  
-}
+  const { user, clearUser } = useUser();
   const { logout } = useContext(AuthContext);
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   const handleLogout = () => {
     Alert.alert(
@@ -29,112 +36,266 @@ const ProfileScreen = ({ navigation }) => {
       "Are you sure you want to log out?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout",  onPress: async () => {
-          await logout();     // clears token
-          await clearUser();  // clears user info
-        }, style: "destructive" },
+        {
+          text: "Logout",
+          onPress: async () => {
+            await logout(); // clears token
+            await clearUser(); // clears user info
+          },
+          style: "destructive",
+        },
       ],
       { cancelable: true }
     );
   };
 
-  return (
-    <SafeAreaView style={tw`flex-1 bg-white`}>
-    <View style={tw`flex-1 bg-white p-5`}>
-      {/* Header */}
-      <Text style={[tw`mt-10 mb-10 font-bold`, { fontSize: scaleFont(32) }]}>
-        Account
-      </Text>
-
-      {/* Profile Info */}
-      <View style={tw`items-center p-5 border-2 border-black rounded-lg`}>
-        <Ionicons name="person-circle-outline" size={70} color="#000" />
-        <Text style={[tw`font-semibold`, { fontSize: scaleFont(18) }]}>
-          {user?.name}
+  const renderMenuItem = (icon, title, onPress, isDestructive = false) => (
+    <TouchableOpacity
+      style={styles.menuItem}
+      onPress={onPress}
+      accessible
+      accessibilityLabel={title}
+    >
+      <View style={styles.menuItemContent}>
+        <Ionicons
+          name={icon}
+          size={iconSize}
+          color={isDestructive ? '#FF3B30' : '#333333'}
+        />
+        <Text style={[
+          styles.menuItemText,
+          isDestructive && styles.destructiveText
+        ]}>
+          {title}
         </Text>
-        <Text style={tw`text-gray-500`}>{user?.email}</Text>
-        <Text style={tw`text-gray-500`}>{user?.id}</Text>
-        
+      </View>
+      <Ionicons name="chevron-forward" size={iconSize} color="#CCCCCC" />
+    </TouchableOpacity>
+  );
 
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
+      
+      {/* Profile Header */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={['#00ADB5', '#00C2CC']}
+          style={styles.headerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerSubtitle}>Manage your account</Text>
+            </View>
+            <View style={styles.headerAvatar}>
+              <Ionicons name="person-circle" size={48} color="#FFFFFF" />
+            </View>
+          </View>
+        </LinearGradient>
       </View>
 
-      {/* Account Section */}
-      <Text style={tw`text-lg font-semibold mt-4 mb-3`}>Account</Text>
-      <View style={tw`rounded-lg bg-gray-100 p-1`}>
-        {/* <TouchableOpacity
-          accessible
-          accessibilityLabel="Notification Settings"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={() => navigation.navigate("NotificationSettingsScreen")}
-        >
-          <Ionicons name="notifications-outline" size={iconSize} color="#000" />
-          <Text style={tw`text-black text-base flex-1 text-left`}>Notifications</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity> */}
+      <ScrollView style={styles.container}>
+        {/* Profile Card */}
+        <View style={styles.profileCard}>
+          <Text style={styles.welcomeText}>Welcome back,</Text>
+          <Text style={styles.userName}>{user?.name}</Text>
+          <Text style={styles.userEmail}>{user?.email}</Text>
+        </View>
 
-        <TouchableOpacity
-          accessible
-          accessibilityLabel="Account Settings"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={() => navigation.navigate("AccountSettingsScreen")}
-        >
-          <Ionicons name="lock-closed-outline" size={iconSize} color="#000" />
-          <Text style={tw`text-black text-base flex-1 text-left`}>Account Settings</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <View style={styles.menuContainer}>
+            {renderMenuItem(
+              "lock-closed-outline",
+              "Account Settings",
+              () => navigation.navigate("AccountSettingsScreen")
+            )}
+            {renderMenuItem(
+              "construct-outline",
+              "Manage Motors",
+              () => navigation.navigate("AddMotorScreen")
+            )}
+            {renderMenuItem(
+              "log-out-outline",
+              "Logout",
+              handleLogout,
+              true
+            )}
+          </View>
+        </View>
 
-        <TouchableOpacity
-          accessible
-          accessibilityLabel="Manage Motors"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={() => navigation.navigate("AddMotorScreen")}
-        >
-          <Ionicons name="construct-outline" size={iconSize} color="#000" />
-          <Text style={tw`text-black text-base flex-1 text-left`}>Motors</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
+        {/* App Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Settings</Text>
+          <View style={styles.menuContainer}>
+            {renderMenuItem(
+              "color-palette-outline",
+              "Theme",
+              () => {
+                // Theme functionality will be added later
+                Alert.alert(
+                  "Coming Soon",
+                  "Theme customization will be available in the next update.",
+                  [{ text: "OK", style: "default" }]
+                );
+              }
+            )}
+          </View>
+        </View>
 
-        <TouchableOpacity
-          accessible
-          accessibilityLabel="Logout"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={handleLogout}
-        >
-          <Ionicons name="log-out-outline" size={iconSize} color="red" />
-          <Text style={tw`text-red-500 text-base flex-1 text-left`}>Logout</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Support Section */}
-      <Text style={tw`text-lg font-semibold mt-4 mb-3`}>Support</Text>
-      <View style={tw`rounded-lg bg-gray-100 p-1`}>
-        <TouchableOpacity
-          accessible
-          accessibilityLabel="Help Center"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={() => navigation.navigate("HelpCenterScreen")}
-        >
-          <Ionicons name="help-outline" size={iconSize} color="#000" />
-          <Text style={tw`text-black text-base flex-1 text-left`}>Help Center</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          accessible
-          accessibilityLabel="Report a Bug"
-          style={tw`flex-row justify-between items-center p-2 m-1`}
-          onPress={() => navigation.navigate("ReportBugScreen")}
-        >
-          <Ionicons name="shield-outline" size={iconSize} color="#000" />
-
-          <Text style={tw`text-black text-base flex-1 text-left`}>Privacy Policy</Text>
-          <Ionicons name="chevron-forward-outline" size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-    </View>
+        {/* Support Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          <View style={styles.menuContainer}>
+            {renderMenuItem(
+              "help-circle-outline",
+              "Help Center",
+              () => navigation.navigate("HelpCenterScreen")
+            )}
+            {renderMenuItem(
+              "shield-outline",
+              "Privacy Policy",
+              () => navigation.navigate("ReportBugScreen")
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F2EEEE',
+  },
+  container: {
+    flex: 1,
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#F2EEEE',
+    zIndex: 10,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 12 : 16,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
+  },
+  headerAvatar: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileCard: {
+    backgroundColor: '#FFFAFA',
+    margin: 16,
+    borderRadius: 16,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 16,
+    color: '#666666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  section: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  menuContainer: {
+    backgroundColor: '#FFFAFA',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333333',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  destructiveText: {
+    color: '#FF3B30',
+  },
+});
 
 export default ProfileScreen;

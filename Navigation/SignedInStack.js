@@ -25,7 +25,7 @@ import AlertDetailsScreen from "../Screens/loggedIn/AlertDetailsScreen";
 import DestinationDetailsScreen from "../Screens/loggedIn/DestinationDetailsScreen";
 import FuelLogDetailsScreen from "../Screens/loggedIn/FuelLogDetailsScreen.tsx";
 import FuelCalculatorScreen from "../Screens/loggedIn/FuelCalculatorScreen";
-import AddFuelLogScreen from "../Screens/loggedIn/addFuelLogsScreen";
+import AddFuelLogScreen from "../Screens/loggedIn/AddFuelLogScreen";
 import addSavedDestinationScreen from "../Screens/loggedIn/addSavedDestinationScreen";
 import AllDestinationsMapScreen from "../Screens/loggedIn/allSavedDestination";
 import ChangeEmailScreen from "../Screens/account_tab/ChangeEmailScreen";
@@ -71,51 +71,42 @@ function MainTabs() {
 
 export default function SignedInStack() {
   return (
-<Stack.Navigator screenOptions={{ headerShown: false }}>
-  <Stack.Screen name="MainTabs" component={MainTabs} />
+    <Stack.Navigator 
+      screenOptions={{ 
+        headerShown: false,
+      }}
+    >
+      <Stack.Group>
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Home" component={MainTabs} />
+        <Stack.Screen name="LicenseOCR" component={LicenseOCR} />
+        <Stack.Screen name="RouteSelectionScreen" component={RouteSelectionScreen} />
+        <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+        <Stack.Screen name="ReportBugScreen" component={ReportBugScreen} />
+        <Stack.Screen name="AccountSettingsScreen" component={AccountSettingsScreen} />
+        <Stack.Screen name="MapScreenTry" component={MapScreenTry} />
+        <Stack.Screen name="Menu" component={Menu} />
+        <Stack.Screen name="MotorDetails" component={MotorDetailsScreen} />
+        <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
+        <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
+        <Stack.Screen name="DestinationDetails" component={DestinationDetailsScreen} />
+        <Stack.Screen name="FuelLogDetails" component={FuelLogDetailsScreen} />
+        <Stack.Screen name="FuelCalculator" component={FuelCalculatorScreen} />
+        <Stack.Screen name="GasStations" component={GasStationsScreen} />
+        <Stack.Screen name="AddSavedDestinationScreen" component={addSavedDestinationScreen} />
+        <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
+        <Stack.Screen name="AllSavedDestinationScreen" component={allSavedDestinationScreen} />
+        <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      </Stack.Group>
 
-  <Stack.Screen name="Home" component={MainTabs} />
-  <Stack.Screen name="LicenseOCR" component={LicenseOCR} />
-
-  <Stack.Screen name="RouteSelectionScreen" component={RouteSelectionScreen} />
-
-  {/* <Stack.Screen name="TrackingScreen" component={TrackingScreen} /> */}
-  <Stack.Screen name="AddMotorScreen" component={AddMotorScreen} />
-  <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
-  <Stack.Screen name="ReportBugScreen" component={ReportBugScreen} />
-  <Stack.Screen name="AccountSettingsScreen" component={AccountSettingsScreen} />
-  {/* <Stack.Screen name="NotificationSettingsScreen" component={NotificationSettingsScreen} /> */}
-  {/* <Stack.Screen name="SelectRouteScreen" component={SelectRouteScreen} /> */}
-
-
-  <Stack.Screen name="MapScreenTry" component={MapScreenTry} />
-
-
-  <Stack.Screen name="Menu" component={Menu} />
-
-  {/* 👇 Add these for Home navigation */}
-  <Stack.Screen name="MotorDetails" component={MotorDetailsScreen} />
-  <Stack.Screen name="TripDetails" component={TripDetailsScreen} />
-  <Stack.Screen name="AlertDetails" component={AlertDetailsScreen} />
-  <Stack.Screen name="DestinationDetails" component={DestinationDetailsScreen} />
-  <Stack.Screen name="FuelLogDetails" component={FuelLogDetailsScreen} />
-  <Stack.Screen name="FuelCalculator" component={FuelCalculatorScreen} />
-  <Stack.Screen name = "GasStations" component={GasStationsScreen} />
-
-  <Stack.Screen name="AddFuelLogScreen" component={AddFuelLogScreen} />
-  <Stack.Screen name="AddSavedDestinationScreen" component={addSavedDestinationScreen} />
-  <Stack.Screen name="AllDestinationsMapScreen" component={AllDestinationsMapScreen} />
-  <Stack.Screen name="AllSavedDestinationScreen" component={allSavedDestinationScreen} />
-  
-  {/* 👆 Add these for Home navigation */}
-  <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
-  <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-  <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
-  <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
-
-  {/* <Stack.Screen name ="TrackTripScreen" component={TrackTripScreen} /> */}
-
-</Stack.Navigator>
-
+      {/* Modal Screens */}
+      <Stack.Group screenOptions={{ presentation: 'modal' }}>
+        <Stack.Screen name="AddMotorScreen" component={AddMotorScreen} />
+        <Stack.Screen name="AddFuelLogScreen" component={AddFuelLogScreen} />
+      </Stack.Group>
+    </Stack.Navigator>
   );
 }
