@@ -10,26 +10,51 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Alert,
+  Modal,
 } from "react-native";
 import tw from "twrnc";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from 'expo-linear-gradient';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 import { useUser } from "../../AuthContext/UserContext";
-import { LOCALHOST_IP } from "@env";
+
+// Use the deployed backend URL
+const API_BASE_URL = 'https://ts-backend-1-jyit.onrender.com';
 
 const PAGE_SIZE = 5;
+
+type RootStackParamList = {
+  AddFuelLogScreen: undefined;
+  FuelLogDetails: { item: any };
+};
+
+type NavigationProp = StackNavigationProp<RootStackParamList>;
 
 type RouteParams = {
   item?: any;
   fullList?: any[];
 };
 
+type SortOption = {
+  label: string;
+  value: 'date' | 'liters' | 'cost' | 'odometer';
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
+const sortOptions: SortOption[] = [
+  { label: 'Date', value: 'date', icon: 'calendar-outline' },
+  { label: 'Volume', value: 'liters', icon: 'water-outline' },
+  { label: 'Cost', value: 'cost', icon: 'pricetag-outline' },
+  { label: 'Odometer', value: 'odometer', icon: 'speedometer-outline' },
+];
+
 export default function FuelLogDetailsScreen() {
   const { user } = useUser();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const { item, fullList } = route.params as RouteParams;
   const [logs, setLogs] = useState([]);
@@ -42,6 +67,9 @@ export default function FuelLogDetailsScreen() {
   const [sortBy, setSortBy] = useState("date");
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [showSortModal, setShowSortModal] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (user?._id) fetchLogs();
@@ -49,7 +77,7 @@ export default function FuelLogDetailsScreen() {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch(`${LOCALHOST_IP}/api/fuel-logs/${user._id}`);
+      const res = await fetch(`${API_BASE_URL}/api/fuel-logs/${user._id}`);
       const data = await res.json();
       const sorted = [...data].reverse();
       setLogs(sorted);
@@ -59,6 +87,93 @@ export default function FuelLogDetailsScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteFuelLog = async (logId: string) => {
+    Alert.alert(
+      "Delete Fuel Log",
+      "Are you sure you want to delete this fuel log? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              console.log('Attempting to delete fuel log:', logId);
+              
+              const response = await fetch(`${API_BASE_URL}/api/fuel-logs/${logId}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+              });
+
+              console.log('Delete response status:', response.status);
+              console.log('Delete response headers:', response.headers);
+
+              // Try to get the raw response text first
+              const responseText = await response.text();
+              console.log('Raw response:', responseText);
+
+              // Check if response is empty
+              if (!responseText.trim()) {
+                if (response.ok) {
+                  // If response is empty but status is OK (common for DELETE operations)
+                  setLogs(prevLogs => prevLogs.filter(log => log._id !== logId));
+                  setFiltered(prevFiltered => prevFiltered.filter(log => log._id !== logId));
+                  Alert.alert("Success", "Fuel log deleted successfully");
+                  return;
+                } else {
+                  throw new Error('Empty response from server');
+                }
+              }
+
+              // Try to parse JSON only if we have a response
+              let data;
+              try {
+                data = JSON.parse(responseText);
+              } catch (e) {
+                console.error('Failed to parse response as JSON:', e);
+                if (response.ok) {
+                  // If status is OK but response isn't JSON, still treat as success
+                  setLogs(prevLogs => prevLogs.filter(log => log._id !== logId));
+                  setFiltered(prevFiltered => prevFiltered.filter(log => log._id !== logId));
+                  Alert.alert("Success", "Fuel log deleted successfully");
+                  return;
+                } else {
+                  throw new Error('Invalid JSON response from server');
+                }
+              }
+
+              if (response.ok) {
+                setLogs(prevLogs => prevLogs.filter(log => log._id !== logId));
+                setFiltered(prevFiltered => prevFiltered.filter(log => log._id !== logId));
+                Alert.alert(
+                  "Success",
+                  data?.message || "Fuel log deleted successfully"
+                );
+              } else {
+                throw new Error(data?.message || data?.error || 'Failed to delete fuel log');
+              }
+            } catch (error) {
+              console.error('Delete operation failed:', {
+                error,
+                message: error.message,
+                stack: error.stack
+              });
+              
+              Alert.alert(
+                "Error",
+                "Failed to delete fuel log. Please try again later. " +
+                (error.message || "Unknown error occurred")
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   useEffect(() => {
@@ -96,17 +211,29 @@ export default function FuelLogDetailsScreen() {
       });
     }
 
-    if (sortBy === "date") {
-      temp.sort((a, b) => new Date(b.date) - new Date(a.date));
-    } else if (sortBy === "liters") {
-      temp.sort((a, b) => b.liters - a.liters);
-    } else if (sortBy === "cost") {
-      temp.sort((a, b) => b.totalCost - a.totalCost);
-    }
+    const sortFunction = (a: any, b: any) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+          break;
+        case 'liters':
+          comparison = (b.liters || 0) - (a.liters || 0);
+          break;
+        case 'cost':
+          comparison = (b.totalCost || 0) - (a.totalCost || 0);
+          break;
+        case 'odometer':
+          comparison = (b.odometer || 0) - (a.odometer || 0);
+          break;
+      }
+      return sortOrder === 'desc' ? comparison : -comparison;
+    };
 
+    temp.sort(sortFunction);
     setFiltered(temp);
     setPage(1);
-  }, [search, fromDateStr, toDateStr, sortBy, logs]);
+  }, [search, fromDateStr, toDateStr, sortBy, sortOrder, logs]);
 
   const paginated = filtered.slice(0, page * PAGE_SIZE);
   const loadMore = () => {
@@ -124,45 +251,148 @@ export default function FuelLogDetailsScreen() {
     });
   };
 
-  const renderFuelLog = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.logCard}
-      onPress={() => navigation.navigate('FuelLogDetails', { item })}
-    >
-      <View style={styles.logHeader}>
-        <View style={styles.logHeaderLeft}>
-          <Text style={styles.dateText}>{formatDate(item.date)}</Text>
-          <Text style={styles.motorName}>{item.motorId?.nickname ?? 'Unknown Motor'}</Text>
-        </View>
-        <View style={styles.priceContainer}>
-          <Text style={styles.totalPrice}>₱{item.totalCost?.toFixed(2) || '--'}</Text>
-        </View>
-      </View>
+  const formatOdometer = (value: number | undefined) => {
+    if (value === undefined || value === null) return '--';
+    return value.toLocaleString() + ' km';
+  };
 
-      <View style={styles.logDetails}>
-        <View style={styles.detailRow}>
-          <View style={styles.detailItem}>
-            <Ionicons name="water-outline" size={20} color="#00ADB5" />
-            <Text style={styles.detailLabel}>Volume</Text>
-            <Text style={styles.detailValue}>{item.liters?.toFixed(1) || '--'} L</Text>
+  const toggleExpand = (logId: string) => {
+    setExpandedLogId(expandedLogId === logId ? null : logId);
+  };
+
+  const renderSortModal = () => (
+    <Modal
+      visible={showSortModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowSortModal(false)}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowSortModal(false)}
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Sort By</Text>
+          {sortOptions.map((option) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.sortOption,
+                sortBy === option.value && styles.sortOptionSelected,
+              ]}
+              onPress={() => {
+                if (sortBy === option.value) {
+                  setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortBy(option.value);
+                  setSortOrder('desc');
+                }
+                setShowSortModal(false);
+              }}
+            >
+              <View style={styles.sortOptionContent}>
+                <Ionicons name={option.icon} size={20} color={sortBy === option.value ? '#00ADB5' : '#666666'} />
+                <Text style={[
+                  styles.sortOptionText,
+                  sortBy === option.value && styles.sortOptionTextSelected
+                ]}>
+                  {option.label}
+                </Text>
+              </View>
+              {sortBy === option.value && (
+                <Ionicons
+                  name={sortOrder === 'desc' ? 'arrow-down' : 'arrow-up'}
+                  size={20}
+                  color="#00ADB5"
+                />
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  const renderFuelLog = ({ item }) => {
+    const isExpanded = expandedLogId === item._id;
+
+    return (
+      <TouchableOpacity 
+        style={[styles.logCard, isExpanded && styles.logCardExpanded]}
+        onPress={() => toggleExpand(item._id)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.logHeader}>
+          <View style={styles.logHeaderLeft}>
+            <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+            <Text style={styles.motorName}>{item.motorId?.nickname ?? 'Unknown Motor'}</Text>
           </View>
-          <View style={styles.detailItem}>
-            <Ionicons name="pricetag-outline" size={20} color="#00ADB5" />
-            <Text style={styles.detailLabel}>Price/L</Text>
-            <Text style={styles.detailValue}>₱{item.pricePerLiter?.toFixed(2) || '--'}</Text>
-          </View>
-          <View style={styles.detailItem}>
-            <Ionicons name="speedometer-outline" size={20} color="#00ADB5" />
-            <Text style={styles.detailLabel}>Odometer</Text>
-            <Text style={styles.detailValue}>{item.odometer || '--'} km</Text>
+          <View style={styles.headerActions}>
+            <View style={styles.priceContainer}>
+              <Text style={styles.totalPrice}>₱{item.totalCost?.toFixed(2) || '--'}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                deleteFuelLog(item._id);
+              }}
+              style={styles.deleteButton}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            </TouchableOpacity>
           </View>
         </View>
-        {item.notes && (
-          <Text style={styles.notes}>{item.notes}</Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+
+        <View style={styles.logDetails}>
+          <View style={styles.detailRow}>
+            <View style={styles.detailItem}>
+              <Ionicons name="water-outline" size={20} color="#00ADB5" />
+              <Text style={styles.detailLabel}>Volume</Text>
+              <Text style={styles.detailValue}>{item.liters?.toFixed(1) || '--'} L</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Ionicons name="pricetag-outline" size={20} color="#00ADB5" />
+              <Text style={styles.detailLabel}>Price/L</Text>
+              <Text style={styles.detailValue}>₱{item.pricePerLiter?.toFixed(2) || '--'}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Ionicons name="speedometer-outline" size={20} color="#00ADB5" />
+              <Text style={styles.detailLabel}>Odometer</Text>
+              <Text style={styles.detailValue}>{formatOdometer(item.odometer)}</Text>
+            </View>
+          </View>
+          {isExpanded && (
+            <View style={styles.expandedContent}>
+              {item.notes && (
+                <View style={styles.notesContainer}>
+                  <Text style={styles.notesLabel}>Notes</Text>
+                  <Text style={styles.notes}>{item.notes}</Text>
+                </View>
+              )}
+              <View style={styles.additionalDetails}>
+                <Text style={styles.additionalDetailsLabel}>Additional Details</Text>
+                <View style={styles.additionalDetailsGrid}>
+                  {item.motorId?.motorcycleId?.model && (
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>Model</Text>
+                      <Text style={styles.gridValue}>{item.motorId.motorcycleId.model}</Text>
+                    </View>
+                  )}
+                  {item.location && (
+                    <View style={styles.gridItem}>
+                      <Text style={styles.gridLabel}>Location</Text>
+                      <Text style={styles.gridValue}>{item.location}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   if (fullList) {
     return (
@@ -188,15 +418,23 @@ export default function FuelLogDetailsScreen() {
                 <Text style={styles.headerTitle}>Fuel Logs</Text>
                 <Text style={styles.headerSubtitle}>Track your refueling history</Text>
               </View>
+              <TouchableOpacity 
+                style={styles.sortButton}
+                onPress={() => setShowSortModal(true)}
+              >
+                <Ionicons name="funnel-outline" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           </LinearGradient>
         </View>
 
         <FlatList
-          data={fullList}
+          data={paginated}
           renderItem={renderFuelLog}
           keyExtractor={(item) => item._id}
           contentContainerStyle={styles.listContainer}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="water-outline" size={48} color="#00ADB5" />
@@ -221,6 +459,8 @@ export default function FuelLogDetailsScreen() {
             <Ionicons name="add" size={24} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
+
+        {renderSortModal()}
       </SafeAreaView>
     );
   }
@@ -275,7 +515,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'android' ? 20 : 16,
   },
   backButton: {
     padding: 8,
@@ -294,6 +534,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 8,
+  },
+  sortButton: {
+    padding: 8,
   },
   listContainer: {
     padding: 16,
@@ -315,6 +558,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  logCardExpanded: {
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 8,
+  },
   logHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -323,6 +571,10 @@ const styles = StyleSheet.create({
   },
   logHeaderLeft: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   dateText: {
     fontSize: 14,
@@ -338,11 +590,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     padding: 8,
     borderRadius: 8,
+    marginRight: 8,
   },
   totalPrice: {
     fontSize: 18,
     fontWeight: '700',
     color: '#00ADB5',
+  },
+  deleteButton: {
+    padding: 8,
   },
   logDetails: {
     backgroundColor: '#F8F9FA',
@@ -369,11 +625,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333333',
   },
+  expandedContent: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+  },
+  notesContainer: {
+    marginBottom: 16,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
+  },
   notes: {
     fontSize: 14,
     color: '#666666',
-    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  additionalDetails: {
     marginTop: 8,
+  },
+  additionalDetailsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 12,
+  },
+  additionalDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -8,
+  },
+  gridItem: {
+    width: '50%',
+    paddingHorizontal: 8,
+    marginBottom: 12,
+  },
+  gridLabel: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 4,
+  },
+  gridValue: {
+    fontSize: 14,
+    color: '#333333',
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
@@ -412,5 +711,47 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 16,
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  sortOptionSelected: {
+    backgroundColor: '#F8F9FA',
+  },
+  sortOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortOptionText: {
+    fontSize: 16,
+    color: '#666666',
+    marginLeft: 12,
+  },
+  sortOptionTextSelected: {
+    color: '#00ADB5',
+    fontWeight: '500',
   },
 });
