@@ -193,17 +193,18 @@ const RouteDetailsBottomSheet = React.memo(
     onClose,
     selectedRouteId,
     onSelectRoute,
-    selectedMotor, // ✅ include motor prop
+    selectedMotor,
   }: RouteDetailsBottomSheetProps) => {
     const [sortCriteria, setSortCriteria] = useState<"fuel" | "traffic" | "distance">("distance");
 
-    const sortedAlternatives = useMemo(() => {
-      return [...alternatives].sort((a, b) => {
+    const sortedRoutes = useMemo(() => {
+      const all = [bestRoute, ...alternatives];
+      return all.sort((a, b) => {
         if (sortCriteria === "fuel") return a.fuelEstimate - b.fuelEstimate;
         if (sortCriteria === "traffic") return a.trafficRate - b.trafficRate;
         return a.distance - b.distance;
       });
-    }, [sortCriteria, alternatives]);
+    }, [sortCriteria, bestRoute, alternatives]);
 
     const renderFuelRange = (fuelEstimate: number) => {
       const min = fuelEstimate * 0.9;
@@ -212,7 +213,6 @@ const RouteDetailsBottomSheet = React.memo(
     };
 
     if (!visible || !bestRoute || !selectedMotor) return null;
-
 
     return (
       <View style={styles.bottomSheetContainer}>
@@ -224,40 +224,8 @@ const RouteDetailsBottomSheet = React.memo(
         </View>
 
         <ScrollView>
-          <View style={styles.summaryContainer}>
-            <TouchableOpacity
-              onPress={() => onSelectRoute(bestRoute.id)}
-              style={[
-                styles.routeItem,
-                bestRoute.id === selectedRouteId && styles.activeRouteItem,
-              ]}
-            >
-              <Text style={styles.summaryTitle}>Recommended Route</Text>
-              <Text style={styles.routeStatBig}>
-                ⛽ Fuel: {renderFuelRange(bestRoute.fuelEstimate)}
-              </Text>
-              <Text style={styles.routeStat}>
-                🛵 Motor Used: <Text style={{ fontWeight: 'bold' }}>{selectedMotor.name}</Text>
-              </Text>
-              <Text style={styles.routeStat}>
-                🔧 Fuel Efficiency: <Text style={{ fontWeight: 'bold' }}>{selectedMotor.fuelEfficiency} km/L</Text>
-              </Text>
-
-
-              <Text style={styles.routeStat}>
-                📏 Distance: {(bestRoute.distance / 1000).toFixed(2)} km
-              </Text>
-              <Text style={styles.routeStat}>
-                ⏱️ ETA: {formatETA(bestRoute.duration)}
-              </Text>
-              <Text style={styles.routeStat}>
-                🚦 Traffic: {getTrafficLabel(bestRoute.trafficRate)}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.sortOptionsContainer}>
-            <Text style={styles.sectionTitle}>Sort Alternatives By:</Text>
+            <Text style={styles.sectionTitle}>Sort Routes By:</Text>
             {["fuel", "traffic", "distance"].map((criteria) => (
               <TouchableOpacity
                 key={criteria}
@@ -273,36 +241,54 @@ const RouteDetailsBottomSheet = React.memo(
           </View>
 
           <View style={styles.alternativesContainer}>
-            <Text style={styles.sectionTitle}>Alternative Routes</Text>
-            {sortedAlternatives.map((routeItem) => (
-              <TouchableOpacity
-                key={routeItem.id}
-                onPress={() => onSelectRoute(routeItem.id)}
-                style={[
-                  styles.routeItem,
-                  routeItem.id === selectedRouteId && styles.activeRouteItem,
-                ]}
-              >
-                <Text style={styles.routeStatBig}>
-                  ⛽ Fuel: {renderFuelRange(routeItem.fuelEstimate)}
-                </Text>
-                <Text style={styles.routeStat}>
-                  📏 Distance: {(routeItem.distance / 1000).toFixed(2)} km
-                </Text>
-                <Text style={styles.routeStat}>
-                  ⏱️ ETA: {(routeItem.duration / 60).toFixed(0)} min
-                </Text>
-                <Text style={styles.routeStat}>
-                  🚦 Traffic: {getTrafficLabel(bestRoute.trafficRate)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.sectionTitle}>Available Routes</Text>
+            {sortedRoutes.map((routeItem) => {
+              const isSelected = routeItem.id === selectedRouteId;
+              const isRecommended = routeItem.id === bestRoute.id;
+
+              return (
+                <TouchableOpacity
+                  key={routeItem.id}
+                  onPress={() => onSelectRoute(routeItem.id)}
+                  style={[
+                    styles.routeItem,
+                    isSelected && styles.activeRouteItem,
+                  ]}
+                >
+                  {isRecommended && (
+                    <Text style={{ color: "#3498db", fontWeight: "bold" }}>
+                      ⭐ Recommended by Google
+                    </Text>
+                  )}
+                  <Text style={styles.routeStatBig}>
+                    ⛽ Fuel: {renderFuelRange(routeItem.fuelEstimate)}
+                  </Text>
+                  <Text style={styles.routeStat}>
+                    📏 Distance: {(routeItem.distance / 1000).toFixed(2)} km
+                  </Text>
+                  <Text style={styles.routeStat}>
+                    ⏱️ ETA: {(routeItem.duration / 60).toFixed(0)} min
+                  </Text>
+                  <Text style={styles.routeStat}>
+                    🚦 Traffic: {getTrafficLabel(routeItem.trafficRate)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+
+            {sortedRoutes.length === 1 && (
+              <Text style={{ color: "#888", fontStyle: "italic", padding: 10 }}>
+                No alternative routes available. Google only provided 1 route.
+                Try rerouting or adjusting your destination to get more options.
+              </Text>
+            )}
           </View>
         </ScrollView>
       </View>
     );
   }
 );
+
 
 const calculateTotalPathDistance = (coords: LocationCoords[]) => {
   let total = 0;
@@ -554,64 +540,83 @@ export default function NavigationApp({ navigation }: { navigation: any }) {
 
 
   // 🛣️ Fetch route and alternatives from Google Directions API
-  const fetchRoutes = useCallback(async () => {
-    if (!currentLocation || !destination) return;
-    setIsLoading(true);
-    console.log("🛰️ Fetching routes from Google Directions API...");
+const buildDirectionsUrl = ({
+  origin,
+  destination,
+  alternatives = true,
+  departureTime = "now",
+  trafficModel = "best_guess",
+  apiKey = GOOGLE_MAPS_API_KEY,
+}) => {
+  const baseUrl = "https://maps.googleapis.com/maps/api/directions/json";
+  const params = new URLSearchParams({
+    origin: `${origin.latitude},${origin.longitude}`,
+    destination: `${destination.latitude},${destination.longitude}`,
+    alternatives: alternatives.toString(),
+    departure_time: departureTime,
+    traffic_model: trafficModel,
+    key: apiKey,
+  });
+  return `${baseUrl}?${params.toString()}`;
+};
 
-    try {
-      console.log(`https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`);
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destination.latitude},${destination.longitude}&alternatives=true&departure_time=now&traffic_model=best_guess&key=${GOOGLE_MAPS_API_KEY}`
-      );
+const fetchRoutes = useCallback(async () => {
+  if (!currentLocation || !destination) return;
+  setIsLoading(true);
+  console.log("🛰️ Fetching routes from Google Directions API...");
 
-      const data = await res.json();
-      if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
+  try {
+    const url = buildDirectionsUrl({
+      origin: currentLocation,
+      destination: destination,
+    });
 
-      const allRoutes = data.routes.map((r: any, i: number): RouteData => {
-        const leg = r.legs[0];
-        const fuel = selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0;
+    console.log("📡 Request URL:", url);
 
-        return {
-          id: `route-${i}`,
-          distance: leg.distance.value,
-          duration: leg.duration.value,
-          fuelEstimate: fuel,
-          trafficRate: Math.floor(Math.random() * 5) + 1,
-          coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
-            latitude: lat,
-            longitude: lng,
-          })),
-          instructions: leg.steps.map((step: any) =>
-            step.html_instructions.replace(/<[^>]*>/g, "")
-          ),
-        };
-      });
+    const res = await fetch(url);
+    const data = await res.json();
 
-      const alternatives = allRoutes.slice(1);
-      while (alternatives.length < 3 && alternatives.length > 0) {
-        const last = alternatives[alternatives.length - 1];
-        alternatives.push({
-          ...last,
-          id: `route-${alternatives.length + 1}`,
-          distance: last.distance * 1.1,
-          duration: last.duration * 1.1,
-          fuelEstimate: last.fuelEstimate * 1.1,
-        });
-      }
+    if (data.status !== "OK") throw new Error(data.error_message || "Failed to fetch routes");
 
-      setTripSummary(allRoutes[0]);
-      setAlternativeRoutes(alternatives);
-      setSelectedRouteId(allRoutes[0].id);
-      setShowBottomSheet(true);
-      await fetchTrafficReports();
-    } catch (error) {
-      console.error("❌ Route Fetch Error:", error.message);
-      Alert.alert("Route Error", error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentLocation, destination, selectedMotor, fetchTrafficReports]);
+    const allRoutes = data.routes.map((r: any, i: number): RouteData => {
+      const leg = r.legs[0];
+      const fuel = selectedMotor ? leg.distance.value / 1000 / selectedMotor.fuelEfficiency : 0;
+
+      return {
+        id: `route-${i}`,
+        distance: leg.distance.value,
+        duration: leg.duration.value,
+        fuelEstimate: fuel,
+        trafficRate: Math.floor(Math.random() * 5) + 1,
+        coordinates: polyline.decode(r.overview_polyline.points).map(([lat, lng]) => ({
+          latitude: lat,
+          longitude: lng,
+        })),
+        instructions: leg.steps.map((step: any) =>
+          step.html_instructions.replace(/<[^>]*>/g, "")
+        ),
+      };
+    });
+
+    if (allRoutes.length === 0) throw new Error("No route found");
+
+    const mainRoute = allRoutes[0];
+    const alternatives = allRoutes.slice(1); // Actual Google-provided alternatives only
+
+    setTripSummary(mainRoute);
+    setAlternativeRoutes(alternatives);
+    setSelectedRouteId(mainRoute.id);
+    setShowBottomSheet(true);
+    await fetchTrafficReports();
+
+  } catch (error: any) {
+    console.error("❌ Route Fetch Error:", error.message);
+    Alert.alert("Route Error", error.message);
+  } finally {
+    setIsLoading(false);
+  }
+}, [currentLocation, destination, selectedMotor, fetchTrafficReports]);
+
 
 const [startAddress, setStartAddress] = useState<string>("");
 
@@ -839,7 +844,7 @@ const saveTripSummaryToBackend = async (
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.navigate("MainTabs", { screen: "Map" })} style={styles.backButton}>
             <MaterialIcons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerText}>Traffic Slight</Text>
@@ -861,7 +866,7 @@ const saveTripSummaryToBackend = async (
         <Modal animationType="slide" visible={modalVisible}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalBackButton}>
+              <TouchableOpacity onPress={() => navigation.navigate("MainTabs", {screen: "Map"})} style={styles.modalBackButton}>
                 <MaterialIcons name="arrow-back" size={24} color="black" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Search Destination</Text>
@@ -945,10 +950,7 @@ const saveTripSummaryToBackend = async (
               </Marker>
             )}
 
-            {/* Traffic Incidents */}
-            {trafficIncidents.map((incident) => (
-              <TrafficIncidentMarker key={incident.id} incident={incident} />
-            ))}
+
           </MapView>
 
           {/* Controls */}
@@ -959,7 +961,8 @@ const saveTripSummaryToBackend = async (
             </TouchableOpacity>
           )}
 
-          {selectedRoute && !isNavigating && (
+          {selectedRoute && !isNavigating && 
+          (
             <TouchableOpacity onPress={startNavigation} style={styles.navigationButton}>
               <Text style={styles.buttonText}>Start Navigation</Text>
             </TouchableOpacity>
@@ -1000,6 +1003,7 @@ const saveTripSummaryToBackend = async (
             </View>
           )}
         </View>
+
 
         {/* Route Details */}
         <RouteDetailsBottomSheet

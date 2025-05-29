@@ -27,7 +27,7 @@ type SearchBarProps = {
   animateToRegion: (region: any) => void;
   selectedMotor: { name: string; fuelEfficiency: number } | null;
   setSelectedMotor: (motor: { name: string; fuelEfficiency: number } | null) => void;
-  motorList: { name: string; fuelEfficiency: number;  }[];
+  motorList: { name: string; fuelEfficiency: number; }[];
   onPlaceSelectedCloseModal: () => void;
   userId: string; // added prop
 };
@@ -49,26 +49,26 @@ const SearchBar = ({
   const [savedLocations, setSavedLocations] = useState([]);
 
   useEffect(() => {
-  const fetchSaved = async () => {
-    try {
-      const response = await axios.get(
-        `https://ts-backend-1-jyit.onrender.com/api/saved-destinations/${userId}`
-      );
-      const mapped = response.data.map((loc: any) => ({
-        latitude: loc.location.latitude,
-        longitude: loc.location.longitude,
-        address: loc.label,
-      }));
-      setSavedLocations(mapped);
-    } catch (error) {
-      console.error("❌ Failed to fetch saved destinations:", error);
-    }
-  };
+    const fetchSaved = async () => {
+      try {
+        const response = await axios.get(
+          `https://ts-backend-1-jyit.onrender.com/api/saved-destinations/${userId}`
+        );
+        const mapped = response.data.map((loc: any) => ({
+          latitude: loc.location.latitude,
+          longitude: loc.location.longitude,
+          address: loc.label,
+        }));
+        setSavedLocations(mapped);
+      } catch (error) {
+        console.error("❌ Failed to fetch saved destinations:", error);
+      }
+    };
 
-  if (userId) {
-    fetchSaved();
-  }
-}, [userId]);
+    if (userId) {
+      fetchSaved();
+    }
+  }, [userId]);
 
 
   const handlePlaceSelect = (place: {
@@ -93,52 +93,52 @@ const SearchBar = ({
         {motorList.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {motorList.map((motor, index) => (
-<TouchableOpacity
-  key={index}
-  onPress={() => setSelectedMotor(motor)}
-  style={{
-    backgroundColor: selectedMotor?.name === motor.name ? "#3498db" : "#ecf0f1",
-    padding: 10,
-    borderRadius: 10,
-    marginRight: 8,
-    marginLeft: 10,
-    width: 150,
-    alignItems: "center",
-  }}
->
-  {/* Image */}
-  <Image
-    source={require('../../assets/icons/motor-silhouette.png')}
-    style={{
-      width: 50,
-      height: 50,
-      borderRadius: 25,
-      marginBottom: 6,
-      borderWidth: 2,
-      borderColor: selectedMotor?.name === motor.name ? "#fff" : "#bdc3c7",
-    }}
-    resizeMode="cover"
-  />
+              <TouchableOpacity
+                key={index}
+                onPress={() => setSelectedMotor(motor)}
+                style={{
+                  backgroundColor: selectedMotor?.name === motor.name ? "#3498db" : "#ecf0f1",
+                  padding: 10,
+                  borderRadius: 10,
+                  marginRight: 8,
+                  marginLeft: 10,
+                  width: 150,
+                  alignItems: "center",
+                }}
+              >
+                {/* Image */}
+                <Image
+                  source={require('../../assets/icons/motor-silhouette.png')}
+                  style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: 25,
+                    marginBottom: 6,
+                    borderWidth: 2,
+                    borderColor: selectedMotor?.name === motor.name ? "#fff" : "#bdc3c7",
+                  }}
+                  resizeMode="cover"
+                />
 
-  {/* Text */}
-  <Text
-    style={{
-      fontSize: 15,
-      textAlign: "center",
-      color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50",
-    }}
-  >
-    {motor.name}
-  </Text>
-  <Text
-    style={{
-      fontSize: 13,
-      color: selectedMotor?.name === motor.name ? "#ecf0f1" : "#7f8c8d",
-    }}
-  >
-    {motor.fuelEfficiency} km/L
-  </Text>
-</TouchableOpacity>
+                {/* Text */}
+                <Text
+                  style={{
+                    fontSize: 15,
+                    textAlign: "center",
+                    color: selectedMotor?.name === motor.name ? "#fff" : "#2c3e50",
+                  }}
+                >
+                  {motor.name}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: selectedMotor?.name === motor.name ? "#ecf0f1" : "#7f8c8d",
+                  }}
+                >
+                  {motor.fuelEfficiency} km/L
+                </Text>
+              </TouchableOpacity>
 
             ))}
           </ScrollView>
@@ -169,21 +169,31 @@ const SearchBar = ({
           }
         }}
         textInputProps={{
-  value: searchText,
-  onChangeText: setSearchText,
-  placeholderTextColor: "#888",
-  onFocus: () => setIsTyping(true),
-  onBlur: () => setIsTyping(false),
+          value: searchText,
+          onChangeText: setSearchText,
+          placeholderTextColor: "#888",
+          onFocus: () => setIsTyping(true),
+          onBlur: () => setIsTyping(false),
         }}
         query={{ key: GOOGLE_MAPS_API_KEY, language: "en" }}
         styles={{
           textInput: {
-            backgroundColor: "#fff",
-            borderRadius: 10,
-            paddingRight: 50,
-            paddingVertical: 10,
-            fontSize: 16,
-          },
+            marginHorizontal:10,
+  backgroundColor: "#ffffff",            // Clean white background
+  borderRadius: 12,                      // Softer rounded corners
+  paddingHorizontal: 16,                 // Left & right padding for spacing
+  paddingVertical: 12,                   // Top & bottom padding
+  fontSize: 16,                          // Readable font size
+  color: "#2c3e50",                      // Dark readable text
+  borderColor: "#dcdde1",                // Soft gray border
+  borderWidth: 1.2,                      // Thin border
+  elevation: 3,                          // Android shadow
+  shadowColor: "#000",                   // iOS shadow
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 3,
+},
+
           container: { flex: 1, marginBottom: 10 },
           listView: {
             position: "absolute",
@@ -196,20 +206,21 @@ const SearchBar = ({
         }}
       />
 
-      {!isTyping && (
-        <>
-          <Text style={styles.savedHeader}>Saved Locations</Text>
-          <ScrollView style={styles.tabContent}>
-            {savedLocations.map((place, index) =>
-              place?.address ? (
-                <TouchableOpacity key={index} onPress={() => handlePlaceSelect(place)}>
-                  <Text style={styles.savedItem}>{place.address}</Text>
-                </TouchableOpacity>
-              ) : null
-            )}
-          </ScrollView>
-        </>
+{searchText.trim().length === 0 && (
+  <>
+    <Text style={styles.savedHeader}>Saved Locations</Text>
+    <ScrollView style={styles.tabContent}>
+      {savedLocations.map((place, index) =>
+        place?.address ? (
+          <TouchableOpacity key={index} onPress={() => handlePlaceSelect(place)}>
+            <Text style={styles.savedItem}>{place.address} - {place.latitude}</Text>
+          </TouchableOpacity>
+        ) : null
       )}
+    </ScrollView>
+  </>
+)}
+
     </View>
   );
 };
@@ -221,7 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginHorizontal: 10,
-    marginTop: 20,
+    marginTop: 40,
     color: "#444",
   },
   savedItem: {

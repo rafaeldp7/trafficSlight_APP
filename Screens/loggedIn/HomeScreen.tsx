@@ -14,8 +14,10 @@ import axios from 'axios';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import { useUser } from '../../AuthContext/UserContext';
+
 import * as Location from "expo-location";
+
+import { useUser } from '../../AuthContext/UserContext';
 
 const API_BASE = 'https://ts-backend-1-jyit.onrender.com';
 

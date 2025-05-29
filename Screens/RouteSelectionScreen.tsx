@@ -372,8 +372,8 @@ const styles = StyleSheet.create({
   fabText: { color: "#000", fontSize: 16, marginLeft: 8 },
   fabContent: { flexDirection: 'row', alignItems: 'center', backgroundColor: "#fff", padding: 10, borderRadius: 50 },
   userMarker: {
-    width: 50,
-    height: 50,
+    width: 35,
+    height: 35,
     resizeMode: "contain",
   } as ImageStyle,
   iconMarker: { width: 35, height: 35 },
