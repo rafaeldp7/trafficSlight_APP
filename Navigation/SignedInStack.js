@@ -2,6 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { MaterialCommunityIcons } from "react-native-vector-icons";
+import { useColorScheme } from 'react-native';
 
 import ProfileScreen from "../Screens/loggedIn/ProfileScreen";
 
@@ -35,12 +36,16 @@ import NotificationSettings from "../Screens/account_tab/NotificationSettingsScr
 import LicenseOCR from "../Screens/loggedIn/LicenceScanner";
 import allSavedDestinationScreen from "../Screens/loggedIn/allSavedDestination";
 import GasStationsScreen from "../Screens/loggedIn/gasStationsDetails";
+import MaintenanceScreen from "../Screens/loggedIn/MaintenanceDetails";
 // import TrackTripScreen from "../Screens/screens/TrackTripScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 function MainTabs() {
+  const systemColorScheme = useColorScheme();
+  const isDarkMode = systemColorScheme === 'dark';
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -58,8 +63,21 @@ function MainTabs() {
 
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: "#00ADB5",
+        tabBarInactiveTintColor: isDarkMode ? "#777" : "#666",
+        tabBarStyle: {
+          backgroundColor: isDarkMode ? '#2A2A2A' : '#FFFAFA',
+          borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+          borderTopWidth: 1,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: isDarkMode ? 0.3 : 0.1,
+          shadowRadius: 3.84,
+          elevation: 5,
+        },
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
@@ -70,10 +88,17 @@ function MainTabs() {
 }
 
 export default function SignedInStack() {
+  const systemColorScheme = useColorScheme();
+  const isDarkMode = systemColorScheme === 'dark';
+
   return (
     <Stack.Navigator 
       screenOptions={{ 
         headerShown: false,
+        cardStyle: {
+          backgroundColor: isDarkMode ? '#1A1A1A' : '#F2EEEE',
+        },
+        presentation: 'card',
       }}
     >
       <Stack.Group>
@@ -100,6 +125,7 @@ export default function SignedInStack() {
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
         <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+        <Stack.Screen name="MaintenanceDetails" component={MaintenanceScreen} />
       </Stack.Group>
 
       {/* Modal Screens */}

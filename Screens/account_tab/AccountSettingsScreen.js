@@ -134,10 +134,10 @@ export default function AccountSettingsScreen({ navigation }) {
               <TextInput
                 value={form[key]}
                 onChangeText={(value) => handleChange(key, value)}
-                editable={key !== "city" && key !== "province"}
+                editable={key !== "email" && key !== "city" && key !== "province"}
                 style={tw.style(
                   'border border-gray-200 rounded-xl px-4 py-3 bg-[#F8F9FA]',
-                  key === "city" || key === "province" ? 'text-gray-400' : 'text-gray-800'
+                  key === "email" || key === "city" || key === "province" ? 'text-gray-400' : 'text-gray-800'
                 )}
                 placeholder={`Enter ${label.toLowerCase()}`}
               />

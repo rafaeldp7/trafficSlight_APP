@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { formatETA, calculateFuelRange } from "../../utils/mapUtils";
+import { Motor } from '../../../loggedIn/types';
 
 type LocationCoords = {
   latitude: number;
@@ -22,11 +23,6 @@ type RouteData = {
   trafficRate: number;
   coordinates: LocationCoords[];
   instructions?: string[];
-};
-
-type Motor = {
-  name: string;
-  fuelEfficiency: number;
 };
 
 type Props = {

@@ -1,6 +1,11 @@
 // 📦 Decode polyline coordinates from Google
 import polyline from "@mapbox/polyline";
 
+type LocationCoords = {
+  latitude: number;
+  longitude: number;
+};
+
 /**
  * Format ETA (Estimated Time of Arrival) into HH:MM AM/PM format.
  */
@@ -86,9 +91,8 @@ export const isUserOffRoute = (
 /**
  * Calculate total distance of a coordinate path in kilometers.
  */
-export const calculateTotalPathDistance = (
-  coords: { latitude: number; longitude: number }[]
-): number => {
+export const calculateTotalPathDistance = (coords: LocationCoords[]): number => {
+  if (!coords || coords.length < 2) return 0;
   let total = 0;
   for (let i = 1; i < coords.length; i++) {
     total += calcDistance(coords[i - 1], coords[i]);

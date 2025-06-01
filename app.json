@@ -5,7 +5,7 @@
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/traffic_slight_logo.png",
     "userInterfaceStyle": "light",
     "platforms": [
       "ios",
@@ -13,7 +13,7 @@
       "web"
     ],
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/traffic_slight_logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -23,7 +23,7 @@
     "android": {
       "package": "com.rafaeldp07.trafficslight",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/traffic_slight_logo.png",
         "backgroundColor": "#000000"
       },
       "permissions": [
@@ -51,9 +51,8 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "5ad3f9d7-c99a-48ad-8781-81d44079507e"
+        "projectId": "ea1413ba-bc33-4f9a-b304-704e1ba7636b"
       }
-    },
-    "owner": "rafaeldp0721"
+    }
   }
 }

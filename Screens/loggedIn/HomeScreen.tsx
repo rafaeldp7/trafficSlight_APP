@@ -26,12 +26,13 @@ import { useUser } from '../../AuthContext/UserContext';
 
 const API_BASE = 'https://ts-backend-1-jyit.onrender.com';
 
-type RootStackParamList = {
+export type RootStackParamList = {
   MotorDetails: { item: any };
   TripDetails: { item: any };
   AlertDetails: { item: any };
   DestinationDetails: { item: any; fullList?: any[] };
   FuelLogDetails: { item: any; fullList?: any[] };
+  MaintenanceDetails: { item: any; fullList?: any[] };
   FuelCalculator: undefined;
   AddMotorScreen: undefined;
   AddFuelLogScreen: undefined;
@@ -60,10 +61,28 @@ const renderItemLabel = (item: any, type: string) => {
         line3: item.nickname || 'Nickname Unknown',
       };
     case 'My Trips':
+      const maintenanceText = item.maintenanceActions?.length 
+        ? `${item.maintenanceActions.length} maintenance action${item.maintenanceActions.length > 1 ? 's' : ''}`
+        : 'No maintenance';
       return {
-        line1: `${item.origin || 'Start'} → ${item.destination || 'End'}`,
-        line2: `Distance: ${item.distance?.toFixed(1) || '--'} km`,
+        line1: `${item.startAddress || 'Start'} → ${item.destination || 'End'}`,
+        line2: `Distance: ${item.distance?.toFixed(1) || '--'} km • ${maintenanceText}`,
         line3: `ETA: ${item.eta || '--'}`,
+      };
+    case 'Maintenance Records':
+      const actionType = item.type.replace('_', ' ');
+      const actionCost = item.details?.cost ? `₱${Number(item.details.cost).toFixed(2)}` : 'No cost data';
+      const actionQuantity = item.details?.quantity ? ` • ${item.details.quantity.toFixed(1)}L` : '';
+      return {
+        line1: actionType.toUpperCase(),
+        line2: `${actionCost}${actionQuantity}`,
+        line3: new Date(item.timestamp).toLocaleString("en-PH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+          month: "long",
+          day: "numeric",
+        }),
       };
     case 'Traffic Reports':
       return {
@@ -84,10 +103,17 @@ const renderItemLabel = (item: any, type: string) => {
         line3: '',
       };
     case 'Fuel Logs':
+      const fuelLocation = item.location?.address ? ` at ${item.location.address}` : '';
       return {
-        line1: `₱${item.totalCost?.toFixed(2) || '--'}`,
-        line2: `${item.liters?.toFixed(1) || '--'} Liters`,
-        line3: `@ ₱${item.pricePerLiter?.toFixed(2) || '--'}/L`,
+        line1: `₱${item.cost?.toFixed(2) || '--'}`,
+        line2: `${item.quantity?.toFixed(1) || '--'} Liters${fuelLocation}`,
+        line3: new Date(item.date).toLocaleString("en-PH", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+          month: "long",
+          day: "numeric",
+        }),
       };
     case 'Nearby Gas Stations':
       return {
@@ -119,6 +145,17 @@ const getImageForSection = (title: string, description: string) => {
       return require('../../assets/icons/checkered-flag.jpg');
     case 'Fuel Logs':
       return require('../../assets/icons/gas_station-71.png');
+    case 'Maintenance Records':
+      switch (description?.toLowerCase()) {
+        case 'refuel':
+          return require('../../assets/icons/gas_station-71.png');
+        case 'oil_change':
+          return require('../../assets/icons/oil-change.png');
+        case 'tune_up':
+          return require('../../assets/icons/tune-up.png');
+        default:
+          return require('../../assets/icons/maintenance.png');
+      }
     default:
       return require('../../assets/icons/default.png');
   }
@@ -205,6 +242,7 @@ export default function HomeScreen() {
   const [alerts, setAlerts] = useState([]);
   const [destinations, setDestinations] = useState([]);
   const [fuelLogs, setFuelLogs] = useState([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [gasStations, setGasStations] = useState<any[]>([]);
@@ -225,20 +263,32 @@ export default function HomeScreen() {
         tripsRes,
         alertsRes,
         destinationsRes,
-        logsRes
+        logsRes,
+        maintenanceRes
       ] = await Promise.all([
         axios.get(`${API_BASE}/api/user-motors/user/${user._id}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/trips/user/${user._id}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/reports`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/saved-destinations/${user._id}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/fuel-logs/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/maintenance-records/user/${user._id}`).catch(() => ({ data: [] })),
       ]);
 
+      console.log("🔧 Maintenance response:", maintenanceRes.data);
+
+      // Process maintenance records
+      const maintenanceData = maintenanceRes.data.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      console.log("🔧 Sorted maintenance data:", maintenanceData);
+      setMaintenanceRecords(maintenanceData);
+
       setMotors(motorsRes.data);
-      setTrips(tripsRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setTrips(tripsRes.data);
       setAlerts(alertsRes.data);
       setDestinations(destinationsRes.data);
-      setFuelLogs(logsRes.data);
+      setFuelLogs(logsRes.data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
     } catch (err) {
       console.error("🔥 Unexpected Fetch Error:", err);
     } finally {
@@ -311,6 +361,14 @@ export default function HomeScreen() {
       data: gasStations,
       navTarget: 'GasStations',
     },
+    {
+      title: 'Maintenance Records',
+      subtitle: 'Service History',
+      text: 'Track your motorcycle maintenance.',
+      data: maintenanceRecords,
+      navTarget: 'MaintenanceDetails',
+      showSeeAll: true,
+    },
   ];
 
   const silentFetchData = async () => {
@@ -322,6 +380,7 @@ export default function HomeScreen() {
         alertsRes,
         destinationsRes,
         logsRes,
+        maintenanceRes,
         gasStationsRes
       ] = await Promise.all([
         axios.get(`${API_BASE}/api/user-motors/user/${user._id}`).catch(() => ({ data: [] })),
@@ -329,12 +388,18 @@ export default function HomeScreen() {
         axios.get(`${API_BASE}/api/reports`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/saved-destinations/${user._id}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/fuel-logs/${user._id}`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/maintenance-records/user/${user._id}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/gas-stations/nearby?lat=${coords.latitude}&lng=${coords.longitude}`).catch(() => ({ data: [] })),
       ]);
-      console.log("user._id", user._id);
-      console.log("motorsRes.data", motorsRes.data);
+
+      console.log("🔧 Maintenance response (silent):", maintenanceRes.data);
+      const maintenanceData = maintenanceRes.data.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      setMaintenanceRecords(maintenanceData);
+
       setMotors(motorsRes.data);
-      setTrips(tripsRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setTrips(tripsRes.data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setAlerts(alertsRes.data);
       setDestinations(destinationsRes.data);
       setFuelLogs(logsRes.data);
@@ -652,8 +717,4 @@ const styles = StyleSheet.create({
     color: '#777',
   },
 });
-
-function setGasStations(data: any) {
-  throw new Error('Function not implemented.');
-}
 

@@ -7,16 +7,29 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  Alert,
 } from "react-native";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import axios from "axios";
+import { LOCALHOST_IP } from "@env"; // Replace with your actual IP or API base
 
 export default function HelpCenterScreen({ navigation }) {
+  const handleRecalculateAnalytics = async () => {
+    try {
+      const res = await axios.put(`${LOCALHOST_IP}/api/user-motors/fix-motor-analytics`);
+      Alert.alert("Success", res.data.msg || "Analytics updated successfully");
+    } catch (error) {
+      console.error("Recalculation failed", error);
+      Alert.alert("Error", error.response?.data?.msg || "Failed to update analytics");
+    }
+  };
+
   return (
     <SafeAreaView style={tw`flex-1 bg-[#F2EEEE]`}>
       <StatusBar barStyle="light-content" backgroundColor="#00ADB5" />
-      
+
       {/* Header */}
       <View style={tw`w-full bg-[#00ADB5]`}>
         <LinearGradient
@@ -43,6 +56,7 @@ export default function HelpCenterScreen({ navigation }) {
       {/* Scrollable FAQ Section */}
       <ScrollView style={tw`p-4`} showsVerticalScrollIndicator={false}>
         <View style={tw`bg-white rounded-2xl p-5 shadow-sm`}>
+          {/* Existing FAQ Items */}
           <View style={tw`mb-6 p-4 border border-gray-200 rounded-xl bg-[#F8F9FA]`}>
             <Text style={tw`font-semibold text-base text-gray-800`}>How do I add a motorcycle?</Text>
             <Text style={tw`text-gray-600 mt-2`}>
@@ -69,6 +83,16 @@ export default function HelpCenterScreen({ navigation }) {
             <Text style={tw`text-gray-600 mt-2`}>
               Tap the alert button on the main map screen to submit reports like accidents, road closures, or hazards. Your location will be auto-filled.
             </Text>
+          </View>
+
+          {/* ✅ Added Button at Bottom */}
+          <View style={tw`mt-8`}>
+            <TouchableOpacity
+              onPress={handleRecalculateAnalytics}
+              style={tw`bg-[#00ADB5] py-3 rounded-xl items-center`}
+            >
+              <Text style={tw`text-white font-semibold text-lg`}>🔁 Recalculate All Analytics</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
